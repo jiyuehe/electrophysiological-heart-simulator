@@ -1,0 +1,17 @@
+[install CUDA]
+https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html#compiling-cuda-programs
+Download the CUDA installer and choose express installation.
+
+install Microsoft Visual Studio 2019 Community, add "Desktop development with C++"
+
+[write CUDA code]
+Write CUDA code in .cu file.
+
+[compile]
+Open cammand line window cd to this directory, and type in
+
+nvcc -ptx ./kernel_heart_simulation_has_stim.cu -ccbin "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64" -m 64
+
+nvcc -ptx ./kernel_heart_simulation_no_stim.cu -ccbin "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64" -m 64
+
+nvcc -ptx ./kernel_compute_unipolar_electrogram.cu -ccbin "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64" -m 64
