@@ -5,7 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import fn_set_axes_equal
 
-# %%
+# %% load data
+# --------------------------------------------------
 script_dir = os.path.dirname(os.path.abspath(__file__)) # get the path of the current script
 os.chdir(script_dir) # change the working directory
 
@@ -28,25 +29,40 @@ if debug_plot == 1:
     fn_set_axes_equal.execute(ax)
     plt.show()
 
-# %%
-dt = 0.05  # unit: millisecond. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
-t_final = 100
-c = 1  # diffusion coefficient. c = 1 is good for atrium
-n_voxel = voxel.shape[0] 
-fiber_flag = 0  # no fiber
-r = []  # no fiber
-fiber_orientation = []  # no fiber
-
-# pacing
+# %% settings
+# --------------------------------------------------
+dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
+t_final = 300 # ms
 pacing_voxel_id = np.array([36184, 36190, 36191, 36198, 36693, 36694, 36695, 36699, 36700, 36701, 36705, 36706, 36707, 37187, 37192, 37193, 37194, 37199])
-
-# duration
 pacing_start_time = 1 # ms
 pacing_cycle_length = 180 # ms
+pacing_duration = 10 # ms
 
-n = 10 # ms
-pacing_duration = n/dt # make sure it is n ms no matter what dt is
+c = 1 # diffusion coefficient. c = 1 is good for atrium
+n_voxel = voxel.shape[0] 
+fiber_flag = 0 # no fiber
+r = [] # no fiber
+fiber_orientation = [] # no fiber
 
-pacing_starts = np.arange(pacing_start_time/dt, t_final/dt - pacing_duration + 1, pacing_cycle_length/dt)
-pacing_ends = pacing_starts + pacing_duration - 1
+# create the pacing signal
+# --------------------------------------------------
+pacing_duration_time_steps = pacing_duration/dt # make sure it is n ms no matter what dt is
+J_stim_value = 20 # pacing strength. 20 is good. 10 is not large enough if space step is 0.1 mm and time step is 0.001
+pacing_starts = np.arange(pacing_start_time/dt, t_final/dt - pacing_duration_time_steps + 1, pacing_cycle_length/dt)
+pacing_ends = pacing_starts + pacing_duration_time_steps - 1
 
+t_step = len(np.arange(dt, t_final + dt, dt)) # time steps
+pacing_signal = np.zeros(t_step)
+for n in range(len(pacing_starts)):
+    pacing_signal[int(pacing_starts[n]):int(pacing_ends[n])+1] = J_stim_value
+
+debug_plot = 0
+if debug_plot == 1:
+    t = np.arange(dt, t_final + dt, dt)
+    plt.figure()
+    plt.plot(t,pacing_signal, 'b')
+    plt.xlabel('Time (ms)')
+    plt.title('Pacing signal')
+    plt.show()
+
+# 
