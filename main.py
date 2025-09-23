@@ -37,12 +37,7 @@ pacing_voxel_id = np.array([36184, 36190, 36191, 36198, 36693, 36694, 36695, 366
 pacing_start_time = 1 # ms
 pacing_cycle_length = 180 # ms
 pacing_duration = 10 # ms
-
 c = 1 # diffusion coefficient. c = 1 is good for atrium
-n_voxel = voxel.shape[0] 
-fiber_flag = 0 # no fiber
-r = [] # no fiber
-fiber_orientation = [] # no fiber
 
 # create the pacing signal
 # --------------------------------------------------
@@ -65,4 +60,26 @@ if debug_plot == 1:
     plt.title('Pacing signal')
     plt.show()
 
-# 
+# parameters
+n_voxel = voxel.shape[0] 
+tau_in_voxel = np.ones((n_voxel, 1)) * 0.3
+tau_out_voxel = np.ones((n_voxel, 1)) * 6
+tau_open_voxel = np.ones((n_voxel, 1)) * 120
+tau_close_voxel = np.ones((n_voxel, 1)) * 80
+v_gate_voxel = np.ones((n_voxel, 1)) * 0.13
+
+# fiber orientation
+fiber_flag = 0 # 0: no fiber, 1: fiber
+r = [] # no fiber
+fiber_orientation = [] # no fiber
+D0 = [None] * n_voxel  # Create list of None values (equivalent to cell array)
+for n in range(n_voxel):  # 0-based indexing in Python
+    if fiber_flag == 1:
+        e1 = fiber_orientation[n, :].reshape(-1, 1)  # Make column vector
+        D0[n] = r * np.eye(3) + (1-r) * (e1 @ e1.T)  # @ is matrix multiplication
+    elif fiber_flag == 0:
+        # here r = 1
+        D0[n] = np.eye(3)
+
+# equation parts
+
