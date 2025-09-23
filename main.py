@@ -1,6 +1,7 @@
 # %%
 import os
 import scipy.io
+import numpy as np
 import matplotlib.pyplot as plt
 import fn_set_axes_equal
 
@@ -8,10 +9,10 @@ import fn_set_axes_equal
 script_dir = os.path.dirname(os.path.abspath(__file__)) # get the path of the current script
 os.chdir(script_dir) # change the working directory
 
-folder_path = "data/"
+data_path = "data/"
 
-# Load the .mat file
-mat_data = scipy.io.loadmat(folder_path + "heart_example.mat")
+# load the .mat file
+mat_data = scipy.io.loadmat(data_path + "heart_example.mat")
 # %%
 voxel = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel'][0,0]
 
@@ -28,3 +29,13 @@ if debug_plot == 1:
     plt.show()
 
 # %%
+dt = 0.05  # unit: millisecond. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
+t_final = 100
+c = 1  # diffusion coefficient. c = 1 is good for atrium
+n_voxel = voxel.shape[0] 
+fiber_flag = 0  # no fiber
+r = []  # no fiber
+fiber_orientation = []  # no fiber
+
+pacing_voxel_id = np.array([36184, 36190, 36191, 36198, 36693, 36694, 36695, 36699, 36700, 36701, 36705, 36706, 36707, 37187, 37192, 37193, 37194, 37199])
+

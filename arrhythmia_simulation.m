@@ -75,6 +75,7 @@ elseif strcmp(arrhythmia_type,'rotor')
     end
 end
 
+% calculate the simulation
 do_flag = 1;
 if do_flag == 1
     simulation_input = assign_simulation_input(n_voxel,dt,t_final,fiber_flag,fiber_orientation,pacing_voxel_id,c_voxel,pacing_start_time,...
@@ -92,6 +93,7 @@ elseif do_flag == 0
     cd(directory.home_dir);
 end
 
+% display simulation results
 debug_plot = 0;
 if debug_plot == 1
     % action potential of some voxel
