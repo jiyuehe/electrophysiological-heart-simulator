@@ -1,4 +1,6 @@
 # %%
+# load libraries
+# --------------------------------------------------
 import os
 import scipy.io
 import numpy as np
@@ -11,7 +13,8 @@ import utils.fn_create_phase as fn_create_phase
 import matplotlib.animation as animation
 from matplotlib.animation import FFMpegWriter
 
-# %% load the .mat data file
+# %% 
+# load the .mat data file
 # --------------------------------------------------
 script_dir = os.path.dirname(os.path.abspath(__file__)) # get the path of the current script
 os.chdir(script_dir) # change the working directory
@@ -35,7 +38,8 @@ if debug_plot == 1:
     fn_set_axes_equal.execute(ax)
     plt.show()
 
-# %% settings
+# %% 
+# settings
 # --------------------------------------------------
 # simulation parameters
 dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
@@ -72,11 +76,13 @@ for n in range(n_voxel):  # 0-based indexing in Python
         # here r = 1
         D0[n] = np.eye(3)
 
-# %% heart model equation parts
+# %% 
+# compute heart model equation parts
 # --------------------------------------------------
 P_2d = fn_equation_parts.execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c)
 
-# %% create the pacing signal
+# %% 
+# create the pacing signal
 # --------------------------------------------------
 pacing_signal = fn_create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length)
 
@@ -89,9 +95,17 @@ if debug_plot == 1: # plot pacing signal
     plt.title('Pacing signal')
     plt.show()
 
-# %% compute simulation
+# %% 
+# compute simulation
 # --------------------------------------------------
-action_potential, h = fn_compute_simulation.execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+do_flag = 0 # 1: compute simulation, 0: load existing result
+if do_flag == 1:
+    action_potential, h = fn_compute_simulation.execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+    np.save('result/action_potential.npy', action_potential)
+    np.save('result/h.npy', h)
+elif do_flag == 0:
+    action_potential = np.load('result/action_potential.npy')
+    h = np.load('result/h.npy')
 
 debug_plot = 0
 if debug_plot == 1:
@@ -102,9 +116,8 @@ if debug_plot == 1:
     plt.plot(h[voxel_id, :],'g')
     plt.show()
 
-np.save('result/action_potential.npy', action_potential)
-
-# %% display result
+# %% 
+# display result
 # --------------------------------------------------
 
 '''
