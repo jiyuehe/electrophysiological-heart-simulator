@@ -97,7 +97,7 @@ def compute_voxel(u_current, h_current, P_2d, neighbor_id_2d_2, J_stim, dt, Delt
     
     for n in prange(n_voxel): # parallel loop
         # compute diffusion term
-        diffusion_term[n] = P_2d[n, 20] / (4*Delta[0,0]**2) * \
+        diffusion_term[n] = P_2d[n, 20] / (4*Delta**2) * \
         ( \
             P_2d[n, 0] * (u_current[neighbor_id_2d_2[n, 0]] - u_current[n]) + \
             P_2d[n, 1] * (u_current[neighbor_id_2d_2[n, 1]] - u_current[n]) + \
@@ -160,7 +160,7 @@ def execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, 
 
     for t in range(T): 
         do_flag = 1
-        if do_flag == 1 and (t % (T//10)) == 0:
+        if do_flag == 1 and (t % (T//5)) == 0:
             print(f'simulating {t/T*100:.1f}%')
         
         J_stim.fill(0.0) # reset values to 0s

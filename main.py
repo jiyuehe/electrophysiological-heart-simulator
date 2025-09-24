@@ -25,7 +25,7 @@ mat_data = scipy.io.loadmat(data_path + "heart_example.mat")
 
 voxel = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel'][0,0]
 neighbor_id_2d = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel_based_voxels'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
-Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0]
+Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0][0,0]
 
 debug_plot = 0
 if debug_plot == 1:
@@ -142,7 +142,7 @@ x_max = np.max(xyz[:,0]) + d_buffer
 y_max = np.max(xyz[:,1]) + d_buffer
 z_max = np.max(xyz[:,2]) + d_buffer
 
-do_flag = 0
+do_flag = 1
 if do_flag == 1:
     print("display movie")
 
