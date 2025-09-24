@@ -10,6 +10,7 @@ import utils.fn_create_pacing_signal as fn_create_pacing_signal
 import utils.fn_equation_parts as fn_equation_parts
 import utils.fn_compute_simulation as fn_compute_simulation
 import utils.fn_create_phase as fn_create_phase
+import utils.fn_convert_data_to_color as fn_convert_data_to_color
 import matplotlib.animation as animation
 from matplotlib.animation import FFMpegWriter
 
@@ -98,7 +99,7 @@ if debug_plot == 1: # plot pacing signal
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 0 # 1: compute simulation, 0: load existing result
+do_flag = 1 # 1: compute simulation, 0: load existing result
 if do_flag == 1:
     action_potential, h = fn_compute_simulation.execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
     np.save('result/action_potential.npy', action_potential)
@@ -121,62 +122,19 @@ if debug_plot == 1:
 # --------------------------------------------------
 # create phase from action potential
 action_potential_phase = np.zeros_like(action_potential)
+activation_phase = np.zeros_like(action_potential)
 for id in range(action_potential.shape[0]):
-    action_potential_phase[id,:], _ = fn_create_phase.execute(action_potential[id,:], v_gate)
+    action_potential_phase[id,:], activation_phase[id,:] = fn_create_phase.execute(action_potential[id,:], v_gate)
 
-
-
-
-t = 90
-data = action_potential_phase[:, t]
-data_min = 0
-data_max = 1.0
-data_threshold = 0.13 # threshold to determine active voxels
-
-
-
-import matplotlib.colors as mcolors
-
-data = np.clip(data, data_min, data_max) # clip values
-hue = (data - data_min) / (data_max - data_min) * (240.0 / 360.0)
-
-# assign color using HSV colormap
-hsv = np.zeros((hue.size, 3))
-hsv[:, 0] = hue
-hsv[:, 1] = 1.0
-hsv[:, 2] = 1.0
-map_color = mcolors.hsv_to_rgb(hsv)
-
-# assign non-active to gray
-non_active_id = (data <= data_threshold) | np.isnan(data)
-map_color[non_active_id, :] = 0.8
-
-
-debug_plot = 0
-if debug_plot == 1: # plot one time step
-    time_step = 90
-    plt.figure(figsize=(10, 8))
-    ax = plt.axes(projection='3d')
-    ax.scatter(voxel[:, 0], voxel[:, 1], voxel[:, 2], c=map_color, s=2, marker='.', alpha=1)
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.ylabel('Z')
-    fn_set_axes_equal.execute(ax)
-    plt.show()
-
-# %% display result
-
-
-# display simulation movie
-voltage = action_potential
+# display simulation phase movie
+movie_data = action_potential_phase
 xyz = voxel
 t = np.arange(1, t_final + 1, 1)
+num_particles, num_time_steps = movie_data.shape
+v_min = np.min(movie_data)
+v_max = np.max(movie_data)
 
-num_particles, num_time_steps = voltage.shape
-v_min = 0.13
-v_max = 1.0
-
-d_buffer = 5
+d_buffer = 5 
 x_min = np.min(xyz[:,0]) - d_buffer
 y_min = np.min(xyz[:,1]) - d_buffer
 z_min = np.min(xyz[:,2]) - d_buffer
@@ -194,16 +152,22 @@ if do_flag == 1:
     interval = 0.01
     plt.figure(figsize=(10, 8))
     ax = plt.axes(projection='3d')
-    ax.view_init(elev=-90, azim=-170)
+    ax.view_init(elev = -50, azim = 100)
 
     for n in range(num_time_steps):
         print(n/num_time_steps)
 
         ax.clear()
 
-        ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], 
-                   c=voltage[:, n], s=2, marker='.', alpha=1, cmap='coolwarm', vmin=v_min, vmax=v_max)
-            
+        # assign color based on phase to each voxel
+        data = action_potential_phase[:, n]
+        data_min = v_min
+        data_max = v_max
+        data_threshold = v_min
+        map_color = fn_convert_data_to_color.execute(data, data_min, data_max, data_threshold)
+
+        ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c=map_color, s=2, alpha=1)
+        
         # set title with current time step
         ax.set_title(f'Time: {t[n]}/{t[-1]}')
         
@@ -224,7 +188,7 @@ if do_flag == 1:
         plt.pause(interval)
 
     # save simulation movie as mp4
-    do_flag = 0
+    do_flag = 1
     if do_flag == 1:
         print("saving movie as mp4")
 
@@ -236,9 +200,15 @@ if do_flag == 1:
 
             ax.clear()
             
-            ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], 
-                    c=voltage[:, n], s=2, marker='.', alpha=1, cmap='coolwarm', vmin=v_min, vmax=v_max)
-                
+            # assign color based on phase to each voxel
+            data = action_potential_phase[:, n]
+            data_min = v_min
+            data_max = v_max
+            data_threshold = v_min
+            map_color = fn_convert_data_to_color.execute(data, data_min, data_max, data_threshold)
+
+            ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c=map_color, s=2, alpha=1)
+            
             # set title with current time step
             ax.set_title(f'Time: {t[n]}/{t[-1]}')
             
