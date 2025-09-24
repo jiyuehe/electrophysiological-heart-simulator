@@ -4,6 +4,8 @@ import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
 import fn_set_axes_equal
+import matplotlib.animation as animation
+from matplotlib.animation import FFMpegWriter
 
 # %% load data
 # --------------------------------------------------
@@ -35,7 +37,7 @@ dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, 
 t_final = 300 # ms
 pacing_voxel_id = (np.array([36184, 36190, 36191, 36198, 36693, 36694, 36695, 36699, 36700, 36701, 36705, 36706, 36707, 37187, 37192, 37193, 37194, 37199]) - 1).astype(np.int32) # -1 is to convert Matlab 1-based index to Python 0-based index
 pacing_start_time = 1 # ms
-pacing_cycle_length = 180 # ms
+pacing_cycle_length = 500 # ms
 pacing_duration = 10 # ms
 c = 1 # diffusion coefficient. c = 1 is good for atrium
 
@@ -150,10 +152,6 @@ P_2d[:, 20] = c * np.ones(n_voxel)
 
 # %% compute simulation
 # --------------------------------------------------
-# u_current = np.zeros((n_voxel,1)) # initial value 0, set all voxel at rest
-# h_current = np.ones((n_voxel,1))  # initial value 1, set all voxel at rest
-# u_next = np.zeros((n_voxel,1))
-# h_next = np.zeros((n_voxel,1))
 u_current = np.zeros(n_voxel) # initial value 0, set all voxel at rest
 h_current = np.ones(n_voxel)  # initial value 1, set all voxel at rest
 u_next = np.zeros(n_voxel)
@@ -225,7 +223,7 @@ for t in range(T):
         id_save += 1
 
 # %% display result
-debug_plot = 1
+debug_plot = 0
 if debug_plot == 1:
     # action potential of some voxel
     voxel_id = 100
@@ -233,3 +231,98 @@ if debug_plot == 1:
     plt.plot(sim_u_voxel[voxel_id, :])
     plt.show()
 
+# display simulation movie
+voltage = sim_u_voxel
+xyz = voxel
+t = np.arange(1, t_final + 1, 1)
+
+num_particles, num_time_steps = voltage.shape
+v_min = 0.13
+v_max = 1.0
+
+d_buffer = 5
+x_min = np.min(xyz[:,0]) - d_buffer
+y_min = np.min(xyz[:,1]) - d_buffer
+z_min = np.min(xyz[:,2]) - d_buffer
+x_max = np.max(xyz[:,0]) + d_buffer
+y_max = np.max(xyz[:,1]) + d_buffer
+z_max = np.max(xyz[:,2]) + d_buffer
+
+do_flag = 1
+if do_flag == 1:
+    print("display movie")
+
+    # dictionary to store view angles for each frame
+    view_angles = {}
+
+    interval = 0.01
+    plt.figure(figsize=(10, 8))
+    ax = plt.axes(projection='3d')
+    ax.view_init(elev=-90, azim=-170)
+
+    for n in range(num_time_steps):
+        print(n/num_time_steps)
+
+        ax.clear()
+
+        ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], 
+                   c=voltage[:, n], s=2, marker='.', alpha=1, cmap='coolwarm', vmin=v_min, vmax=v_max)
+            
+        # set title with current time step
+        ax.set_title(f'Time: {t[n]}/{t[-1]}')
+        
+        # reset axis properties
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        fn_set_axes_equal.execute(ax)
+        ax.set_xlim([x_min, x_max])
+        ax.set_ylim([y_min, y_max])
+        ax.set_zlim([z_min, z_max])
+
+        # capture current view angles
+        elev = ax.elev  # elevation angle
+        azim = ax.azim  # azimuth angle
+        view_angles[n] = {'elev': elev, 'azim': azim}
+
+        plt.pause(interval)
+
+    # save simulation movie as mp4
+    do_flag = 1
+    if do_flag == 1:
+        print("saving movie as mp4")
+
+        fig = plt.figure(figsize=(10, 8))
+        ax = plt.axes(projection='3d')
+
+        def animate(n):
+            print(n/num_time_steps)
+
+            ax.clear()
+            
+            ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], 
+                    c=voltage[:, n], s=2, marker='.', alpha=1, cmap='coolwarm', vmin=v_min, vmax=v_max)
+                
+            # set title with current time step
+            ax.set_title(f'Time: {t[n]}/{t[-1]}')
+            
+            # reset axis properties
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            fn_set_axes_equal.execute(ax)
+            ax.set_xlim([x_min, x_max])
+            ax.set_ylim([y_min, y_max])
+            ax.set_zlim([z_min, z_max])
+
+            # restore view angle to maintain user's rotation
+            ax.view_init(elev=view_angles[n]['elev'], azim=view_angles[n]['azim'])
+
+        anim = animation.FuncAnimation(fig, animate, frames=num_time_steps, interval=10, blit=False, repeat=False)
+        # the interval parameter specifies the delay between frames in milliseconds
+
+        # save
+        writer = FFMpegWriter(fps=10, bitrate=1800)
+        anim.save('result/simulation movie.mp4', writer=writer)
+
+        print("movie saved as mp4")
