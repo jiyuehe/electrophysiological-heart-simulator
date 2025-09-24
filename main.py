@@ -1,16 +1,11 @@
 # %%
 # load libraries
 # --------------------------------------------------
+import utils
 import os
 import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.fn_set_axes_equal as fn_set_axes_equal
-import utils.fn_create_pacing_signal as fn_create_pacing_signal
-import utils.fn_equation_parts as fn_equation_parts
-import utils.fn_compute_simulation as fn_compute_simulation
-import utils.fn_create_phase as fn_create_phase
-import utils.fn_convert_data_to_color as fn_convert_data_to_color
 import matplotlib.animation as animation
 from matplotlib.animation import FFMpegWriter
 
@@ -36,7 +31,7 @@ if debug_plot == 1:
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.set_box_aspect([1,1,1])
-    fn_set_axes_equal.execute(ax)
+    utils.set_axes_equal.execute(ax)
     plt.show()
 
 # %% 
@@ -67,7 +62,7 @@ elif model_flag == 2: # Aliev–Panfilov
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 0 # 1: compute simulation, 0: load existing result
+do_flag = 1 # 1: compute simulation, 0: load existing result
 if do_flag == 1:
     # fiber orientations
     fiber_flag = 0 # 0: no fiber, 1: fiber
@@ -83,10 +78,10 @@ if do_flag == 1:
             D0[n] = np.eye(3)
 
     # compute heart model equation parts
-    P_2d = fn_equation_parts.execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c)
+    P_2d = utils.compute_equation_parts.execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c)
 
     # create the pacing signal
-    pacing_signal = fn_create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length)
+    pacing_signal = utils.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length)
 
     debug_plot = 0
     if debug_plot == 1: # plot pacing signal
@@ -100,16 +95,16 @@ if do_flag == 1:
     # compute simulation
     method = 2 # 1: vectorized, 2: CPU parallel
     if method == 1:
-        action_potential, h = fn_compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+        action_potential, h = utils.compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
     elif method == 2:
-        action_potential, h = fn_compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+        action_potential, h = utils.compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
     np.save('result/action_potential.npy', action_potential)
 
     # create phase from action potential
     action_potential_phase = np.zeros_like(action_potential)
     activation_phase = np.zeros_like(action_potential)
     for id in range(action_potential.shape[0]):
-        action_potential_phase[id,:], activation_phase[id,:] = fn_create_phase.execute(action_potential[id,:], v_gate)
+        action_potential_phase[id,:], activation_phase[id,:] = utils.create_phase.execute(action_potential[id,:], v_gate)
     np.save('result/action_potential_phase.npy', action_potential_phase)
 elif do_flag == 0:
     action_potential = np.load('result/action_potential.npy')
@@ -155,7 +150,7 @@ if do_flag == 1:
         if (n % (num_time_steps//5)) == 0:
             print(f'compute color map {n/num_time_steps*100:.1f}%')
         data = action_potential_phase[:, n]
-        color = fn_convert_data_to_color.execute(data, data_min, data_max, data_threshold)
+        color = utils.convert_data_to_color.execute(data, data_min, data_max, data_threshold)
         map_color[n] = color
 
     # create figure
@@ -169,7 +164,7 @@ if do_flag == 1:
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
     ax.set_zlim([z_min, z_max])
-    fn_set_axes_equal.execute(ax)
+    utils.set_axes_equal.execute(ax)
 
     pause_interval = 0.000001
     view_angles = {} # dictionary to store view angles for each frame

@@ -90,7 +90,7 @@ dvdz(:,mz_0_id) = 0;
 % compute electrogram
 T = size(action_potential,1);
 electrogram_unipolar = zeros(n_electrode,T);
-parfor t_id = 1:T
+for t_id = 1:T
     if mod(t_id,T/5) == 0
         disp(['compute electrogram ',num2str(t_id/T*100),'%']);
     end
