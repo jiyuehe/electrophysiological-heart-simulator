@@ -142,83 +142,60 @@ do_flag = 1
 if do_flag == 1:
     print("display movie")
 
-    # dictionary to store view angles for each frame
-    view_angles = {}
+    # compute color map for each time step
+    data_min = v_min
+    data_max = v_max
+    data_threshold = v_min
+    map_color = {}
+    for n in range(num_time_steps):
+        if (n % (num_time_steps//10)) == 0:
+            print(f'compute color map {n/num_time_steps*100:.1f}%')
+        data = action_potential_phase[:, n]
+        color = fn_convert_data_to_color.execute(data, data_min, data_max, data_threshold)
+        map_color[n] = color
 
-    interval = 0.01
-    plt.figure(figsize=(10, 8))
+    # create figure
+    fig = plt.figure(figsize=(10, 8))
     ax = plt.axes(projection='3d')
     ax.view_init(elev = -50, azim = 100)
+    plot_handle = ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c=map_color[0], s=2, alpha=1)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_xlim([x_min, x_max])
+    ax.set_ylim([y_min, y_max])
+    ax.set_zlim([z_min, z_max])
+    fn_set_axes_equal.execute(ax)
 
+    pause_interval = 0.000001
+    view_angles = {} # dictionary to store view angles for each frame
     for n in range(num_time_steps):
-        print(n/num_time_steps)
+        if (n % (num_time_steps//10)) == 0:
+            print(f'playing movie {n/num_time_steps*100:.1f}%')
 
-        ax.clear()
-
-        # assign color based on phase to each voxel
-        data = action_potential_phase[:, n]
-        data_min = v_min
-        data_max = v_max
-        data_threshold = v_min
-        map_color = fn_convert_data_to_color.execute(data, data_min, data_max, data_threshold)
-
-        ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c=map_color, s=2, alpha=1)
-        
-        # set title with current time step
-        ax.set_title(f'Time: {t[n]}/{t[-1]}')
-        
-        # reset axis properties
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        fn_set_axes_equal.execute(ax)
-        ax.set_xlim([x_min, x_max])
-        ax.set_ylim([y_min, y_max])
-        ax.set_zlim([z_min, z_max])
+        plot_handle.set_facecolor(map_color[n]) # set color based on phase to each voxel
+        ax.set_title(f'Time: {t[n]}/{t[-1]} ms') # set title with current time step
 
         # capture current view angles
         elev = ax.elev  # elevation angle
         azim = ax.azim  # azimuth angle
         view_angles[n] = {'elev': elev, 'azim': azim}
 
-        plt.pause(interval)
+        plt.pause(pause_interval)
 
     # save simulation movie as mp4
     do_flag = 0
     if do_flag == 1:
         print("saving movie as mp4")
 
-        fig = plt.figure(figsize=(10, 8))
-        ax = plt.axes(projection='3d')
-
         def animate(n):
-            print(n/num_time_steps)
+            if (n % (num_time_steps//10)) == 0:
+                print(f'saving movie {n/num_time_steps*100:.1f}%')
 
-            ax.clear()
-            
-            # assign color based on phase to each voxel
-            data = action_potential_phase[:, n]
-            data_min = v_min
-            data_max = v_max
-            data_threshold = v_min
-            map_color = fn_convert_data_to_color.execute(data, data_min, data_max, data_threshold)
+            plot_handle.set_facecolor(map_color[n]) # set color based on phase to each voxel
+            ax.set_title(f'Time: {t[n]}/{t[-1]} ms') # set title with current time step
 
-            ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c=map_color, s=2, alpha=1)
-            
-            # set title with current time step
-            ax.set_title(f'Time: {t[n]}/{t[-1]}')
-            
-            # reset axis properties
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
-            fn_set_axes_equal.execute(ax)
-            ax.set_xlim([x_min, x_max])
-            ax.set_ylim([y_min, y_max])
-            ax.set_zlim([z_min, z_max])
-
-            # restore view angle to maintain user's rotation
-            ax.view_init(elev=view_angles[n]['elev'], azim=view_angles[n]['azim'])
+            ax.view_init(elev=view_angles[n]['elev'], azim=view_angles[n]['azim']) # restore view angle
 
         anim = animation.FuncAnimation(fig, animate, frames=num_time_steps, interval=10, blit=False, repeat=False)
         # the interval parameter specifies the delay between frames in milliseconds

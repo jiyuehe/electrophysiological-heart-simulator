@@ -6,8 +6,8 @@ def execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal
 
     u_current = np.zeros(n_voxel) # initial value 0, set all voxel at rest
     h_current = np.ones(n_voxel)  # initial value 1, set all voxel at rest
-    u_next = np.zeros(n_voxel)
-    h_next = np.zeros(n_voxel)
+    u_next = np.empty_like(u_current)
+    h_next = np.empty_like(h_current)
     J_stim = np.zeros(n_voxel)
     diffusion_term = np.zeros(n_voxel)
 
@@ -17,7 +17,6 @@ def execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal
     sim_u_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
     sim_h_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
 
-    # Numba does not support boolean indexing on 2D arrays
     neighbor_id_2d_2 = neighbor_id_2d # neighbor indices
     neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index
         # this does not matter because the corresponding P_2d will be 0, 
@@ -54,14 +53,13 @@ def execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal
         J_stim.fill(0.0) # reset values to 0s
         J_stim[pacing_voxel_id] = pacing_signal[t]
         
-        u_next = \
+        u_next = u_current + dt * \
         ( \
             (h_current * (u_current**2) * (1 - u_current)) / P_2d[:, 17] - \
             u_current / P_2d[:, 18] + \
             J_stim + \
             diffusion_term \
-        ) \
-        * dt + u_current
+        )
         
         # compute the next time step value of h
         h_next_1 = ((1 - h_current) / P_2d[:, 15]) * dt + h_current
@@ -81,6 +79,6 @@ def execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal
         if (t % int(1/dt)) == 0:
             sim_u_voxel[:, id_save] = u_current
             sim_h_voxel[:, id_save] = h_current
-            id_save += 1
+            id_save = id_save + 1
 
     return sim_u_voxel, sim_h_voxel
