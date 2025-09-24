@@ -108,7 +108,7 @@ if ~isempty(p)
         L = length(m(1):m(2)-1);
 
         if m(1) == 1
-            activation_phase(m(1):m(2)-1) = linspace(L/L_median,1,L); % linspace(X1, X2, N) generates N points between X1 and X2.
+            activation_phase(m(1):m(2)-1) = linspace(1-L/L_median,1,L); % linspace(X1, X2, N) generates N points between X1 and X2.
             % NOTE: this is different that creating action_potential_phase
         end
 

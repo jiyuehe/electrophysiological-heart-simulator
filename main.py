@@ -119,19 +119,16 @@ if debug_plot == 1:
 # %% 
 # display result
 # --------------------------------------------------
-
-'''
 # create phase from action potential
-action_potential_phase, activation_phase = fn_create_phase.execute(action_potential, v_gate)
-
-
-
+action_potential_phase = np.zeros_like(action_potential)
+for id in range(action_potential.shape[0]):
+    action_potential_phase[id,:], _ = fn_create_phase.execute(action_potential[id,:], v_gate)
 
 
 
 
 t = 90
-data = action_potential[:, t]
+data = action_potential_phase[:, t]
 data_min = 0
 data_max = 1.0
 data_threshold = 0.13 # threshold to determine active voxels
@@ -265,4 +262,3 @@ if do_flag == 1:
         anim.save('result/simulation movie.mp4', writer=writer)
 
         print("movie saved as mp4")
-'''
