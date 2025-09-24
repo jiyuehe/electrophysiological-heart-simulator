@@ -14,6 +14,6 @@ def execute(data, data_min, data_max, data_threshold):
 
     # assign non-active to gray
     non_active_id = (data <= data_threshold) | np.isnan(data)
-    map_color[non_active_id, :] = 0.8
+    map_color[non_active_id, :] = 0.5
 
     return map_color

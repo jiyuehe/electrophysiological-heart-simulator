@@ -44,7 +44,7 @@ if debug_plot == 1:
 # --------------------------------------------------
 # simulation parameters
 dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
-t_final = 600 # ms
+t_final = 200 # ms
 pacing_start_time = 1 # ms
 pacing_cycle_length = 250 # ms
 c = 1 # diffusion coefficient. c = 1 is good for atrium
@@ -64,49 +64,52 @@ if model_flag == 1: # Mitchell-Schaeffer
 elif model_flag == 2: # Aliev–Panfilov
     a = 1 # just put something here for now
 
-# fiber orientations
-fiber_flag = 0 # 0: no fiber, 1: fiber
-r = [] # no fiber
-fiber_orientation = [] # no fiber
-D0 = [None] * n_voxel  # Create list of None values (equivalent to cell array)
-for n in range(n_voxel):  # 0-based indexing in Python
-    if fiber_flag == 1:
-        e1 = fiber_orientation[n, :].reshape(-1, 1)  # Make column vector
-        D0[n] = r * np.eye(3) + (1-r) * (e1 @ e1.T)  # @ is matrix multiplication
-    elif fiber_flag == 0:
-        # here r = 1
-        D0[n] = np.eye(3)
-
-# %% 
-# compute heart model equation parts
-# --------------------------------------------------
-P_2d = fn_equation_parts.execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c)
-
-# %% 
-# create the pacing signal
-# --------------------------------------------------
-pacing_signal = fn_create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length)
-
-debug_plot = 0
-if debug_plot == 1: # plot pacing signal
-    t = np.arange(dt, t_final + dt, dt)
-    plt.figure()
-    plt.plot(t,pacing_signal, 'b')
-    plt.xlabel('Time (ms)')
-    plt.title('Pacing signal')
-    plt.show()
-
 # %% 
 # compute simulation
 # --------------------------------------------------
 do_flag = 0 # 1: compute simulation, 0: load existing result
 if do_flag == 1:
+    # fiber orientations
+    fiber_flag = 0 # 0: no fiber, 1: fiber
+    r = [] # no fiber
+    fiber_orientation = [] # no fiber
+    D0 = [None] * n_voxel  # Create list of None values (equivalent to cell array)
+    for n in range(n_voxel):  # 0-based indexing in Python
+        if fiber_flag == 1:
+            e1 = fiber_orientation[n, :].reshape(-1, 1)  # Make column vector
+            D0[n] = r * np.eye(3) + (1-r) * (e1 @ e1.T)  # @ is matrix multiplication
+        elif fiber_flag == 0:
+            # here r = 1
+            D0[n] = np.eye(3)
+
+    # compute heart model equation parts
+    P_2d = fn_equation_parts.execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c)
+
+    # create the pacing signal
+    pacing_signal = fn_create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length)
+
+    debug_plot = 0
+    if debug_plot == 1: # plot pacing signal
+        t = np.arange(dt, t_final + dt, dt)
+        plt.figure()
+        plt.plot(t,pacing_signal, 'b')
+        plt.xlabel('Time (ms)')
+        plt.title('Pacing signal')
+        plt.show()
+
+    # compute simulation
     action_potential, h = fn_compute_simulation.execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
     np.save('result/action_potential.npy', action_potential)
-    np.save('result/h.npy', h)
+
+    # create phase from action potential
+    action_potential_phase = np.zeros_like(action_potential)
+    activation_phase = np.zeros_like(action_potential)
+    for id in range(action_potential.shape[0]):
+        action_potential_phase[id,:], activation_phase[id,:] = fn_create_phase.execute(action_potential[id,:], v_gate)
+    np.save('result/action_potential_phase.npy', action_potential_phase)
 elif do_flag == 0:
     action_potential = np.load('result/action_potential.npy')
-    h = np.load('result/h.npy')
+    action_potential_phase = np.load('result/action_potential_phase.npy')
 
 debug_plot = 0
 if debug_plot == 1:
@@ -114,18 +117,11 @@ if debug_plot == 1:
     voxel_id = 1000
     plt.figure()
     plt.plot(action_potential[voxel_id, :],'b')
-    plt.plot(h[voxel_id, :],'g')
     plt.show()
 
 # %% 
 # display result
 # --------------------------------------------------
-# create phase from action potential
-action_potential_phase = np.zeros_like(action_potential)
-activation_phase = np.zeros_like(action_potential)
-for id in range(action_potential.shape[0]):
-    action_potential_phase[id,:], activation_phase[id,:] = fn_create_phase.execute(action_potential[id,:], v_gate)
-
 # display simulation phase movie
 movie_data = action_potential_phase
 xyz = voxel
@@ -188,7 +184,7 @@ if do_flag == 1:
         plt.pause(interval)
 
     # save simulation movie as mp4
-    do_flag = 1
+    do_flag = 0
     if do_flag == 1:
         print("saving movie as mp4")
 
