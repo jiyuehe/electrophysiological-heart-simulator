@@ -99,7 +99,7 @@ if debug_plot == 1: # plot pacing signal
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 1 # 1: compute simulation, 0: load existing result
+do_flag = 0 # 1: compute simulation, 0: load existing result
 if do_flag == 1:
     action_potential, h = fn_compute_simulation.execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
     np.save('result/action_potential.npy', action_potential)
