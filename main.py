@@ -148,7 +148,7 @@ if do_flag == 1:
     data_threshold = v_min
     map_color = {}
     for n in range(num_time_steps):
-        if (n % (num_time_steps//10)) == 0:
+        if (n % (num_time_steps//5)) == 0:
             print(f'compute color map {n/num_time_steps*100:.1f}%')
         data = action_potential_phase[:, n]
         color = fn_convert_data_to_color.execute(data, data_min, data_max, data_threshold)
