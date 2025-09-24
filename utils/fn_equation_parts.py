@@ -1,6 +1,6 @@
 import numpy as np
 
-def execute(n_voxel, D0, neighbor_id_2d_2, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c):
+def execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c):
     D11 = np.zeros(n_voxel)
     D12 = np.zeros(n_voxel)
     D13 = np.zeros(n_voxel)
@@ -21,7 +21,11 @@ def execute(n_voxel, D0, neighbor_id_2d_2, tau_open_voxel, tau_close_voxel, tau_
         D32[n] = D0[n][2, 1]
         D33[n] = D0[n][2, 2]
 
-    delta_2d = np.sign(neighbor_id_2d_2) # it will result in 0s and 1s
+    delta_2d = np.sign(neighbor_id_2d + 1) # it will result in 0s and 1s. 
+        # neighbor_id_2d contains -1 for nodes have no neighbors
+        # note: for those 0s in neighbor_id_2d, it means the neighbor is the first voxel (index 0)
+        # delta_2d = 1 for nodes have neighbors
+        # delta_2d = 0 for nodes have no neighbors
 
     P_2d = np.zeros((n_voxel, 21))  # parts of the equation. _2d signifies it is a 2D variable
 
@@ -31,6 +35,11 @@ def execute(n_voxel, D0, neighbor_id_2d_2, tau_open_voxel, tau_close_voxel, tau_
     P_2d[:, 3] = 4 * delta_2d[:, 3] * D22
     P_2d[:, 4] = 4 * delta_2d[:, 4] * D33
     P_2d[:, 5] = 4 * delta_2d[:, 5] * D33
+
+    neighbor_id_2d_2 = neighbor_id_2d
+    neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index. 
+        # and this does not matter because the corresponding delta_2d will be 0, 
+        # so these terms will be eliminated anyway
 
     P_2d[:, 6] = (delta_2d[:, 0] * delta_2d[:, 1] * 
                 (delta_2d[:, 0] * delta_2d[:, 1] * (D11[neighbor_id_2d_2[:, 0]] - D11[neighbor_id_2d_2[:, 1]]) +
