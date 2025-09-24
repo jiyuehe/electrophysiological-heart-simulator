@@ -67,7 +67,7 @@ elif model_flag == 2: # Aliev–Panfilov
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 1 # 1: compute simulation, 0: load existing result
+do_flag = 0 # 1: compute simulation, 0: load existing result
 if do_flag == 1:
     # fiber orientations
     fiber_flag = 0 # 0: no fiber, 1: fiber
