@@ -168,7 +168,7 @@ sim_h_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
 
 for t in range(T): 
     do_flag = 1
-    if do_flag == 1 and (t % (T//5)) == 0:
+    if do_flag == 1 and (t % (T//10)) == 0:
         print(f'simulation {t/T*100:.1f}%')
     
     # compute diffusion term
