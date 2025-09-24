@@ -4,6 +4,8 @@ import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
 import utils.fn_set_axes_equal as fn_set_axes_equal
+import utils.fn_create_pacing_signal as fn_create_pacing_signal
+import utils.fn_equation_parts as fn_equation_parts
 import matplotlib.animation as animation
 from matplotlib.animation import FFMpegWriter
 
@@ -33,48 +35,28 @@ if debug_plot == 1:
 
 # %% settings
 # --------------------------------------------------
+# simulation parameters
 dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
-t_final = 300 # ms
+t_final = 400 # ms
 pacing_start_time = 1 # ms
-pacing_cycle_length = 500 # ms
+pacing_cycle_length = 190 # ms
 c = 1 # diffusion coefficient. c = 1 is good for atrium
-
 pacing_voxel_id = 100
-neighbor_id = neighbor_id_2d[pacing_voxel_id, :]
-pacing_voxel_id = neighbor_id[neighbor_id != -1] # remove the -1s
 
-# create the pacing signal
-# --------------------------------------------------
-pacing_duration = 10 # ms, do not change
-pacing_duration_time_steps = pacing_duration/dt # make sure it is n ms no matter what dt is
-J_stim_value = 20 # pacing strength. 20 is good. 10 is not large enough if space step is 0.1 mm and time step is 0.001
-pacing_starts = np.arange(pacing_start_time/dt, t_final/dt - pacing_duration_time_steps + 1, pacing_cycle_length/dt)
-pacing_ends = pacing_starts + pacing_duration_time_steps - 1
-
-t_step = len(np.arange(dt, t_final + dt, dt)) # time steps
-pacing_signal = np.zeros(t_step)
-for n in range(len(pacing_starts)):
-    pacing_signal[int(pacing_starts[n]):int(pacing_ends[n])+1] = J_stim_value
-
-debug_plot = 0
-if debug_plot == 1:
-    t = np.arange(dt, t_final + dt, dt)
-    plt.figure()
-    plt.plot(t,pacing_signal, 'b')
-    plt.xlabel('Time (ms)')
-    plt.title('Pacing signal')
-    plt.show()
-
-# parameters
-# --------------------------------------------------
+# parameters of the heart model
 n_voxel = voxel.shape[0] 
-tau_in_voxel = np.ones((n_voxel, 1)) * 0.3
-tau_out_voxel = np.ones((n_voxel, 1)) * 6
-tau_open_voxel = np.ones((n_voxel, 1)) * 120
-tau_close_voxel = np.ones((n_voxel, 1)) * 80
-v_gate_voxel = np.ones((n_voxel, 1)) * 0.13
 
-# fiber orientation
+model_flag = 1
+if model_flag == 1: # Mitchell-Schaeffer
+    tau_in_voxel = np.ones(n_voxel) * 0.3
+    tau_out_voxel = np.ones(n_voxel) * 6
+    tau_open_voxel = np.ones(n_voxel) * 120
+    tau_close_voxel = np.ones(n_voxel) * 80
+    v_gate_voxel = np.ones(n_voxel) * 0.13
+elif model_flag == 2: # Aliev–Panfilov
+    a = 1 # just put something here for now
+
+# fiber orientations
 fiber_flag = 0 # 0: no fiber, 1: fiber
 r = [] # no fiber
 fiber_orientation = [] # no fiber
@@ -87,73 +69,30 @@ for n in range(n_voxel):  # 0-based indexing in Python
         # here r = 1
         D0[n] = np.eye(3)
 
-# %% equation parts
+# %% heart model equation parts
 # --------------------------------------------------
-# neighbor indices
-delta_2d = np.sign(neighbor_id_2d + 1) # the indicating variable delta, and it is a 2D variable. neighbor_id_2d contains -1s for no neighbor, so add 1 before using np.sign(), so that it will result in 0s and 1s.
-neighbor_id_2d_2 = neighbor_id_2d
+neighbor_id_2d_2 = neighbor_id_2d # neighbor indices
 neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index in Python
+P_2d = fn_equation_parts.execute(n_voxel, D0, neighbor_id_2d_2, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c)
 
-D11 = np.zeros((n_voxel, 1))
-D12 = np.zeros((n_voxel, 1))
-D13 = np.zeros((n_voxel, 1))
-D21 = np.zeros((n_voxel, 1))
-D22 = np.zeros((n_voxel, 1))
-D23 = np.zeros((n_voxel, 1))
-D31 = np.zeros((n_voxel, 1))
-D32 = np.zeros((n_voxel, 1))
-D33 = np.zeros((n_voxel, 1))
-for n in range(n_voxel):
-    D11[n] = D0[n][0, 0]
-    D12[n] = D0[n][0, 1]
-    D13[n] = D0[n][0, 2]
-    D21[n] = D0[n][1, 0]
-    D22[n] = D0[n][1, 1]
-    D23[n] = D0[n][1, 2]
-    D31[n] = D0[n][2, 0]
-    D32[n] = D0[n][2, 1]
-    D33[n] = D0[n][2, 2]
+# %% create the pacing signal
+# --------------------------------------------------
+pacing_signal = fn_create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length)
 
-P_2d = np.zeros((n_voxel, 21))  # parts of the equation, and it is a 2D variable
-
-P_2d[:, 0] = 4 * delta_2d[:, 0] * D11.flatten()  # .flatten() is used to convert the column vector (shape (n_voxel, 1)) to a 1D array (shape (n_voxel,))
-P_2d[:, 1] = 4 * delta_2d[:, 1] * D11.flatten()
-P_2d[:, 2] = 4 * delta_2d[:, 2] * D22.flatten()
-P_2d[:, 3] = 4 * delta_2d[:, 3] * D22.flatten()
-P_2d[:, 4] = 4 * delta_2d[:, 4] * D33.flatten()
-P_2d[:, 5] = 4 * delta_2d[:, 5] * D33.flatten()
-
-P_2d[:, 6] = (delta_2d[:, 0] * delta_2d[:, 1] * 
-              (delta_2d[:, 0] * delta_2d[:, 1] * (D11[neighbor_id_2d_2[:, 0]].flatten() - D11[neighbor_id_2d_2[:, 1]].flatten()) +
-               delta_2d[:, 2] * delta_2d[:, 3] * (D21[neighbor_id_2d_2[:, 2]].flatten() - D21[neighbor_id_2d_2[:, 3]].flatten()) +
-               delta_2d[:, 4] * delta_2d[:, 5] * (D31[neighbor_id_2d_2[:, 4]].flatten() - D31[neighbor_id_2d_2[:, 5]].flatten())))
-
-P_2d[:, 7] = (delta_2d[:, 2] * delta_2d[:, 3] * 
-              (delta_2d[:, 0] * delta_2d[:, 1] * (D12[neighbor_id_2d_2[:, 0]].flatten() - D12[neighbor_id_2d_2[:, 1]].flatten()) +
-               delta_2d[:, 2] * delta_2d[:, 3] * (D22[neighbor_id_2d_2[:, 2]].flatten() - D22[neighbor_id_2d_2[:, 3]].flatten()) +
-               delta_2d[:, 4] * delta_2d[:, 5] * (D32[neighbor_id_2d_2[:, 4]].flatten() - D32[neighbor_id_2d_2[:, 5]].flatten())))
-
-P_2d[:, 8] = (delta_2d[:, 4] * delta_2d[:, 5] * 
-              (delta_2d[:, 0] * delta_2d[:, 1] * (D13[neighbor_id_2d_2[:, 0]].flatten() - D13[neighbor_id_2d_2[:, 1]].flatten()) +
-               delta_2d[:, 2] * delta_2d[:, 3] * (D23[neighbor_id_2d_2[:, 2]].flatten() - D23[neighbor_id_2d_2[:, 3]].flatten()) +
-               delta_2d[:, 4] * delta_2d[:, 5] * (D33[neighbor_id_2d_2[:, 4]].flatten() - D33[neighbor_id_2d_2[:, 5]].flatten())))
-
-P_2d[:, 9] = 2 * delta_2d[:, 6] * delta_2d[:, 8] * D12.flatten()
-P_2d[:, 10] = 2 * delta_2d[:, 7] * delta_2d[:, 9] * D12.flatten()
-P_2d[:, 11] = 2 * delta_2d[:, 14] * delta_2d[:, 16] * D13.flatten()
-P_2d[:, 12] = 2 * delta_2d[:, 15] * delta_2d[:, 17] * D13.flatten()
-P_2d[:, 13] = 2 * delta_2d[:, 10] * delta_2d[:, 12] * D23.flatten()
-P_2d[:, 14] = 2 * delta_2d[:, 11] * delta_2d[:, 13] * D23.flatten()
-
-P_2d[:, 15] = tau_open_voxel.flatten()
-P_2d[:, 16] = tau_close_voxel.flatten()
-P_2d[:, 17] = tau_in_voxel.flatten()
-P_2d[:, 18] = tau_out_voxel.flatten()
-P_2d[:, 19] = v_gate_voxel.flatten()
-P_2d[:, 20] = c * np.ones(n_voxel)
+debug_plot = 0
+if debug_plot == 1:
+    t = np.arange(dt, t_final + dt, dt)
+    plt.figure()
+    plt.plot(t,pacing_signal, 'b')
+    plt.xlabel('Time (ms)')
+    plt.title('Pacing signal')
+    plt.show()
 
 # %% compute simulation
 # --------------------------------------------------
+neighbor_id = neighbor_id_2d[pacing_voxel_id, :] # add all the neighbors of the pacing voxel to be paced
+pacing_voxel_id = neighbor_id[neighbor_id != -1] # remove the -1s
+
 u_current = np.zeros(n_voxel) # initial value 0, set all voxel at rest
 h_current = np.ones(n_voxel)  # initial value 1, set all voxel at rest
 u_next = np.zeros(n_voxel)
