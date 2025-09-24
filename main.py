@@ -44,9 +44,9 @@ if debug_plot == 1:
 # --------------------------------------------------
 # simulation parameters
 dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
-t_final = 200 # ms
 pacing_start_time = 1 # ms
 pacing_cycle_length = 250 # ms
+t_final = 550 # ms. NOTE: need to be at least long enough to have two pacings, or cannot show phase movie after simulation
 c = 1 # diffusion coefficient. c = 1 is good for atrium
 pacing_voxel_id = 100
 
@@ -67,7 +67,7 @@ elif model_flag == 2: # Aliev–Panfilov
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 0 # 1: compute simulation, 0: load existing result
+do_flag = 1 # 1: compute simulation, 0: load existing result
 if do_flag == 1:
     # fiber orientations
     fiber_flag = 0 # 0: no fiber, 1: fiber
@@ -98,7 +98,11 @@ if do_flag == 1:
         plt.show()
 
     # compute simulation
-    action_potential, h = fn_compute_simulation.execute(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+    method = 2 # 1: vectorized, 2: CPU parallel
+    if method == 1:
+        action_potential, h = fn_compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+    elif method == 2:
+        action_potential, h = fn_compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
     np.save('result/action_potential.npy', action_potential)
 
     # create phase from action potential
@@ -138,7 +142,7 @@ x_max = np.max(xyz[:,0]) + d_buffer
 y_max = np.max(xyz[:,1]) + d_buffer
 z_max = np.max(xyz[:,2]) + d_buffer
 
-do_flag = 1
+do_flag = 0
 if do_flag == 1:
     print("display movie")
 
