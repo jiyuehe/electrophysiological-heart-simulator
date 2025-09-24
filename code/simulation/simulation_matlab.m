@@ -10,7 +10,7 @@ neighbor_id_2d_2(neighbor_id_2d_2==0) = 1; % and this does not matter because th
 
 % resonstruct J_stim signal
 stimulus = simulation_input.stimulus;
-[pacing_voxel_id,signal] = j_stim_decompress(stimulus);
+[pacing_voxel_id,pacing_signal] = j_stim_decompress(stimulus);
 
 % compute simulation
 u_current = zeros(n_voxel,1); % initial value 0, set all voxel at rest
@@ -47,7 +47,7 @@ for t = 1:T
     
     % compute the next time step value of u
     J_stim = zeros(n_voxel,1);
-    J_stim(pacing_voxel_id) = signal(:,t);
+    J_stim(pacing_voxel_id) = pacing_signal(:,t);
     u_next = ((h_current .* u_current.^2 .* (1-u_current) ./ P_2d(:,18)) + ...
         (-u_current ./ P_2d(:,19)) + J_stim + diffusion_term) * dt + u_current;
     
