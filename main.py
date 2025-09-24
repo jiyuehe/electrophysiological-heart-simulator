@@ -3,21 +3,20 @@ import os
 import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
-import fn_set_axes_equal
+import utils.fn_set_axes_equal as fn_set_axes_equal
 import matplotlib.animation as animation
 from matplotlib.animation import FFMpegWriter
 
-# %% load data
+# %% load the .mat data file
 # --------------------------------------------------
 script_dir = os.path.dirname(os.path.abspath(__file__)) # get the path of the current script
 os.chdir(script_dir) # change the working directory
 
 data_path = "data/"
-
-# load the .mat file
 mat_data = scipy.io.loadmat(data_path + "heart_example.mat")
+
 voxel = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel'][0,0]
-neighbor_id_2d = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel_based_voxels'][0,0]
+neighbor_id_2d = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel_based_voxels'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
 Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0]
 
 debug_plot = 0
@@ -36,14 +35,17 @@ if debug_plot == 1:
 # --------------------------------------------------
 dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
 t_final = 300 # ms
-pacing_voxel_id = (np.array([36184, 36190, 36191, 36198, 36693, 36694, 36695, 36699, 36700, 36701, 36705, 36706, 36707, 37187, 37192, 37193, 37194, 37199]) - 1).astype(np.int32) # -1 is to convert Matlab 1-based index to Python 0-based index
 pacing_start_time = 1 # ms
 pacing_cycle_length = 500 # ms
-pacing_duration = 10 # ms
 c = 1 # diffusion coefficient. c = 1 is good for atrium
+
+pacing_voxel_id = 100
+neighbor_id = neighbor_id_2d[pacing_voxel_id, :]
+pacing_voxel_id = neighbor_id[neighbor_id != -1] # remove the -1s
 
 # create the pacing signal
 # --------------------------------------------------
+pacing_duration = 10 # ms, do not change
 pacing_duration_time_steps = pacing_duration/dt # make sure it is n ms no matter what dt is
 J_stim_value = 20 # pacing strength. 20 is good. 10 is not large enough if space step is 0.1 mm and time step is 0.001
 pacing_starts = np.arange(pacing_start_time/dt, t_final/dt - pacing_duration_time_steps + 1, pacing_cycle_length/dt)
@@ -88,8 +90,8 @@ for n in range(n_voxel):  # 0-based indexing in Python
 # %% equation parts
 # --------------------------------------------------
 # neighbor indices
-delta_2d = np.sign(neighbor_id_2d) # the indicating variable delta, and it is a 2D variable
-neighbor_id_2d_2 = neighbor_id_2d.astype(np.int32) - 1 # convert Matlab 1-based index to Python 0-based index
+delta_2d = np.sign(neighbor_id_2d + 1) # the indicating variable delta, and it is a 2D variable. neighbor_id_2d contains -1s for no neighbor, so add 1 before using np.sign(), so that it will result in 0s and 1s.
+neighbor_id_2d_2 = neighbor_id_2d
 neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index in Python
 
 D11 = np.zeros((n_voxel, 1))
@@ -287,7 +289,7 @@ if do_flag == 1:
         plt.pause(interval)
 
     # save simulation movie as mp4
-    do_flag = 1
+    do_flag = 0
     if do_flag == 1:
         print("saving movie as mp4")
 
