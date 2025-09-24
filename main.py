@@ -16,8 +16,9 @@ data_path = "data/"
 
 # load the .mat file
 mat_data = scipy.io.loadmat(data_path + "heart_example.mat")
-# %%
 voxel = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel'][0,0]
+neighbor_id_2d = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel_based_voxels'][0,0]
+Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0]
 
 debug_plot = 0
 if debug_plot == 1:
@@ -87,7 +88,6 @@ for n in range(n_voxel):  # 0-based indexing in Python
 # %% equation parts
 # --------------------------------------------------
 # neighbor indices
-neighbor_id_2d = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel_based_voxels'][0,0]
 delta_2d = np.sign(neighbor_id_2d) # the indicating variable delta, and it is a 2D variable
 neighbor_id_2d_2 = neighbor_id_2d.astype(np.int32) - 1 # convert Matlab 1-based index to Python 0-based index
 neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index in Python
@@ -158,7 +158,6 @@ u_next = np.zeros(n_voxel)
 h_next = np.zeros(n_voxel)
 
 T = int(t_final/dt) # number of simulation time steps
-Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0]
 id_save = 0
 
 sim_u_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
