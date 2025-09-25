@@ -42,22 +42,29 @@ dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, 
 pacing_start_time = 1 # ms
 pacing_cycle_length = 250 # ms
 t_final = 550 # ms. NOTE: need to be at least long enough to have two pacings, or cannot show phase movie after simulation
-c = 1 # diffusion coefficient. c = 1 is good for atrium
+
 pacing_voxel_id = 100
 
 # parameters of the heart model
 n_voxel = voxel.shape[0] 
 
-model_flag = 1
+model_flag = 1 # 1: Mitchell-Schaeffer, 2: Aliev–Panfilov
 if model_flag == 1: # Mitchell-Schaeffer
-    tau_in_voxel = np.ones(n_voxel) * 0.3
-    tau_out_voxel = np.ones(n_voxel) * 6
-    tau_open_voxel = np.ones(n_voxel) * 120
-    tau_close_voxel = np.ones(n_voxel) * 80
+    parameter = {}
+    parameter['tau_in_voxel'] = np.ones(n_voxel) * 0.3
+    parameter['tau_out_voxel'] = np.ones(n_voxel) * 6
+    parameter['tau_open_voxel'] = np.ones(n_voxel) * 120
+    parameter['tau_close_voxel'] = np.ones(n_voxel) * 80
+    c = 1 # diffusion coefficient. c = 1 is good for atrium
+    parameter['c_voxel'] = c * np.ones(n_voxel)
     v_gate = 0.13
-    v_gate_voxel = np.ones(n_voxel) * v_gate
+    parameter['v_gate_voxel'] = np.ones(n_voxel) * v_gate
 elif model_flag == 2: # Aliev–Panfilov
-    a = 1 # just put something here for now
+    parameter = {}
+    c = 0.1 # diffusion coefficient
+    parameter['c_voxel'] = c * np.ones(n_voxel)
+    v_gate = 0.13
+    parameter['v_gate_voxel'] = np.ones(n_voxel) * v_gate
 
 # %% 
 # compute simulation
@@ -78,10 +85,10 @@ if do_flag == 1:
             D0[n] = np.eye(3)
 
     # compute heart model equation parts
-    P_2d = utils.compute_equation_parts.execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c)
+    P_2d = utils.compute_equation_parts.execute(n_voxel, D0, neighbor_id_2d, parameter, model_flag)
 
     # create the pacing signal
-    pacing_signal = utils.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length)
+    pacing_signal = utils.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length, model_flag)
 
     debug_plot = 0
     if debug_plot == 1: # plot pacing signal
@@ -95,9 +102,9 @@ if do_flag == 1:
     # compute simulation
     method = 2 # 1: vectorized, 2: CPU parallel
     if method == 1:
-        action_potential, h = utils.compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+        action_potential, h = utils.compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
     elif method == 2:
-        action_potential, h = utils.compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta)
+        action_potential, h = utils.compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
     np.save('result/action_potential.npy', action_potential)
 
     # create phase from action potential
@@ -110,13 +117,11 @@ if do_flag == 1:
     # compute unipolar electrogram
     electrode_id = np.arange(0,15000,5000)
     electrode_xyz = voxel[electrode_id, :]
-    c_voxel = c * np.ones(n_voxel)
     method = 2 # 1: vectorized, 2: CPU parallel
-    
     if method == 1:
-        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, c_voxel, action_potential, Delta, neighbor_id_2d)
+        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
     elif method == 2:
-        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_CPU_parallel(electrode_xyz, voxel, D0, c_voxel, action_potential, Delta, neighbor_id_2d)
+        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_CPU_parallel(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
     np.save('result/electrogram_unipolar.npy', electrogram_unipolar)
 elif do_flag == 0:
     action_potential = np.load('result/action_potential.npy')
@@ -125,11 +130,7 @@ elif do_flag == 0:
 #%%
 debug_plot = 1
 if debug_plot == 1:
-    # action potential of some voxel
-    voxel_id = 1000
-    plt.figure()
-    plt.plot(action_potential[voxel_id, :],'b')
-
+    # action potential
     plt.figure()
     plt.plot(action_potential[electrode_id, :].T)
     plt.xlabel('Time (ms)')
@@ -146,6 +147,8 @@ if debug_plot == 1:
     plt.ylabel('Voltage (scaled)')
     plt.title('examples of simulated unipolar electrogram')
     plt.savefig('result/unipolar_electrogram.png')
+
+    plt.show()
 
 # %% 
 # display result
@@ -166,7 +169,7 @@ x_max = np.max(xyz[:,0]) + d_buffer
 y_max = np.max(xyz[:,1]) + d_buffer
 z_max = np.max(xyz[:,2]) + d_buffer
 
-do_flag = 0
+do_flag = 1
 if do_flag == 1:
     print("display movie")
 

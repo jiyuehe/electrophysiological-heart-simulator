@@ -239,13 +239,6 @@ def execute_CPU_parallel(electrode_xyz, voxel, D0, c_voxel, action_potential, De
         dvdz_b = np.tile(dvdz[:, t_id].reshape(-1, 1), (1, n_electrode))
         
         egm_part = compute_voxel(n_voxel, n_electrode, D11_b, D12_b, D13_b, D21_b, D22_b, D23_b, D31_b, D32_b, D33_b, c_voxel, l, l_x, l_y, l_z, dvdx_b, dvdy_b, dvdz_b)
-        # egm_part = np.zeros((n_voxel, n_electrode))
-        # for n in range(n_voxel):
-        #     egm_part[n,:] = c_voxel[n] / (l[n,:]**3) * (
-        #         (D11_b[n,:] * dvdx_b[n,:] + D12_b[n,:] * dvdy_b[n,:] + D13_b[n,:] * dvdz_b[n,:]) * l_x[n,:] +
-        #         (D21_b[n,:] * dvdx_b[n,:] + D22_b[n,:] * dvdy_b[n,:] + D23_b[n,:] * dvdz_b[n,:]) * l_y[n,:] +
-        #         (D31_b[n,:] * dvdx_b[n,:] + D32_b[n,:] * dvdy_b[n,:] + D33_b[n,:] * dvdz_b[n,:]) * l_z[n,:]
-        #     )
 
         electrogram_unipolar[:, t_id] = np.sum(egm_part, axis=0)
     

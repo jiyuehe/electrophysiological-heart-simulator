@@ -1,6 +1,6 @@
 import numpy as np
 
-def execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in_voxel, tau_out_voxel, v_gate_voxel, c):
+def execute(n_voxel, D0, neighbor_id_2d, parameter, model_flag):
     D11 = np.zeros(n_voxel)
     D12 = np.zeros(n_voxel)
     D13 = np.zeros(n_voxel)
@@ -63,11 +63,14 @@ def execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in
     P_2d[:, 13] = 2 * delta_2d[:, 10] * delta_2d[:, 12] * D23
     P_2d[:, 14] = 2 * delta_2d[:, 11] * delta_2d[:, 13] * D23
 
-    P_2d[:, 15] = tau_open_voxel
-    P_2d[:, 16] = tau_close_voxel
-    P_2d[:, 17] = tau_in_voxel
-    P_2d[:, 18] = tau_out_voxel
-    P_2d[:, 19] = v_gate_voxel
-    P_2d[:, 20] = c * np.ones(n_voxel)
+    if model_flag == 1:
+        P_2d[:, 15] = parameter['tau_open_voxel']
+        P_2d[:, 16] = parameter['tau_close_voxel']
+        P_2d[:, 17] = parameter['tau_in_voxel']
+        P_2d[:, 18] = parameter['tau_out_voxel']
+        P_2d[:, 19] = parameter['v_gate_voxel']
+        P_2d[:, 20] = parameter['c_voxel']
+    elif model_flag == 2:
+        P_2d[:, 20] = parameter['c_voxel']
 
     return P_2d
