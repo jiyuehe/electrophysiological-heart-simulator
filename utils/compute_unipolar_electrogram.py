@@ -37,6 +37,44 @@ def execute_vectorized(electrode_xyz, voxel, D0, c_voxel, action_potential, Delt
         l[:, e_id] = np.sqrt(l_x[:, e_id]**2 + l_y[:, e_id]**2 + l_z[:, e_id]**2)
     l[l < 1] = 1  # electrode is at least 1 mm away from tissue
     
+    neighbor_id_2d_copy = neighbor_id_2d.copy() # NOTE: without .copy(), changes of px will also change neighbor_id_2d
+
+    px = neighbor_id_2d_copy[:, 0] # x +. 
+    px_0_id = px == -1 # these have no neighbors
+    px[px_0_id] = 0 # set to some valid index to avoid error
+    
+    mx = neighbor_id_2d_copy[:, 1] # x -
+    mx_0_id = mx == -1 # these have no neighbors
+    mx[mx_0_id] = 0 # set to some valid index to avoid error
+    
+    py = neighbor_id_2d_copy[:, 2] # y +
+    py_0_id = py == -1 # these have no neighbors
+    py[py_0_id] = 0 # set to some valid index to avoid error
+    
+    my = neighbor_id_2d_copy[:, 3] # y -
+    my_0_id = my == -1 # these have no neighbors
+    my[my_0_id] = 0 # set to some valid index to avoid error
+    
+    pz = neighbor_id_2d_copy[:, 4] # z +
+    pz_0_id = pz == -1 # these have no neighbors
+    pz[pz_0_id] = 0 # set to some valid index to avoid error
+    
+    mz = neighbor_id_2d_copy[:, 5] # z -
+    mz_0_id = mz == -1 # these have no neighbors
+    mz[mz_0_id] = 0 # set to some valid index to avoid error
+    
+    dvdx = (action_potential[px, :] - action_potential[mx, :]) / (2 * Delta)
+    dvdx[px_0_id, :] = 0 # these have no neighbors, set gradient to zero
+    dvdx[mx_0_id, :] = 0 # these have no neighbors, set gradient to zero
+    
+    dvdy = (action_potential[py, :] - action_potential[my, :]) / (2 * Delta)
+    dvdy[py_0_id, :] = 0 # these have no neighbors, set gradient to zero
+    dvdy[my_0_id, :] = 0 # these have no neighbors, set gradient to zero
+    
+    dvdz = (action_potential[pz, :] - action_potential[mz, :]) / (2 * Delta)
+    dvdz[pz_0_id, :] = 0 # these have no neighbors, set gradient to zero
+    dvdz[mz_0_id, :] = 0 # these have no neighbors, set gradient to zero
+    
     D11_b = np.tile(D11[:, np.newaxis], (1, n_electrode))
     D12_b = np.tile(D12[:, np.newaxis], (1, n_electrode))
     D13_b = np.tile(D13[:, np.newaxis], (1, n_electrode))
@@ -46,67 +84,19 @@ def execute_vectorized(electrode_xyz, voxel, D0, c_voxel, action_potential, Delt
     D31_b = np.tile(D31[:, np.newaxis], (1, n_electrode))
     D32_b = np.tile(D32[:, np.newaxis], (1, n_electrode))
     D33_b = np.tile(D33[:, np.newaxis], (1, n_electrode))
-    
-    # Handle voxel-based neighbors for gradient computation
-    px = neighbor_id_2d[:, 0]  # x +
-    px_0_id = px == 0
-    px[px_0_id] = 1
-    
-    mx = neighbor_id_2d[:, 1]  # x -
-    mx_0_id = mx == 0
-    mx[mx_0_id] = 1
-    
-    py = neighbor_id_2d[:, 2]  # y +
-    py_0_id = py == 0
-    py[py_0_id] = 1
-    
-    my = neighbor_id_2d[:, 3]  # y -
-    my_0_id = my == 0
-    my[my_0_id] = 1
-    
-    pz = neighbor_id_2d[:, 4]  # z +
-    pz_0_id = pz == 0
-    pz[pz_0_id] = 1
-    
-    mz = neighbor_id_2d[:, 5]  # z -
-    mz_0_id = mz == 0
-    mz[mz_0_id] = 1
-    
-    # Convert to 0-based indexing for Python
-    px = px - 1
-    mx = mx - 1
-    py = py - 1
-    my = my - 1
-    pz = pz - 1
-    mz = mz - 1
-    
-    # Compute gradients
-    dvdx = (action_potential[:, px] - action_potential[:, mx]) / (2 * Delta)
-    dvdx[:, px_0_id] = 0
-    dvdx[:, mx_0_id] = 0
-    
-    dvdy = (action_potential[:, py] - action_potential[:, my]) / (2 * Delta)
-    dvdy[:, py_0_id] = 0
-    dvdy[:, my_0_id] = 0
-    
-    dvdz = (action_potential[:, pz] - action_potential[:, mz]) / (2 * Delta)
-    dvdz[:, pz_0_id] = 0
-    dvdz[:, mz_0_id] = 0
-    
-    # compute electrogram
-    T = action_potential.shape[0]
+
+    T = action_potential.shape[1]
     electrogram_unipolar = np.zeros((n_electrode, T))
-    
     for t_id in range(T):
         if (t_id + 1) % (T // 5) == 0:
             print(f'compute electrogram {(t_id + 1) / T * 100:.1f}%')
         
-        dvdx_b = np.tile(dvdx[t_id, :].reshape(-1, 1), (1, n_electrode))
-        dvdy_b = np.tile(dvdy[t_id, :].reshape(-1, 1), (1, n_electrode))
-        dvdz_b = np.tile(dvdz[t_id, :].reshape(-1, 1), (1, n_electrode))
+        dvdx_b = np.tile(dvdx[:, t_id].reshape(-1, 1), (1, n_electrode))
+        dvdy_b = np.tile(dvdy[:, t_id].reshape(-1, 1), (1, n_electrode))
+        dvdz_b = np.tile(dvdz[:, t_id].reshape(-1, 1), (1, n_electrode))
         
         electrogram_unipolar[:, t_id] = np.sum(
-            c_voxel / (l**3) * (
+            c_voxel.reshape(-1, 1) / (l**3) * (
                 (D11_b * dvdx_b + D12_b * dvdy_b + D13_b * dvdz_b) * l_x +
                 (D21_b * dvdx_b + D22_b * dvdy_b + D23_b * dvdz_b) * l_y +
                 (D31_b * dvdx_b + D32_b * dvdy_b + D33_b * dvdz_b) * l_z
@@ -125,11 +115,14 @@ def execute_vectorized(electrode_xyz, voxel, D0, c_voxel, action_potential, Delt
     scale = typical_magnitude / voltage_mean
     electrogram_unipolar = electrogram_unipolar * scale
     
-    debug_plot = False
-    if debug_plot:
-        t = np.arange(electrogram_unipolar.shape[1])
+    debug_plot = 0
+    if debug_plot == 1:
+        e_id = 0
         plt.figure()
-        plt.plot(t, electrogram_unipolar.T)
+        plt.plot(electrogram_unipolar[e_id,:], 'b')
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Voltage (scaled)')
+        plt.title('Unipolar electrogram')
         plt.show()
     
     return electrogram_unipolar

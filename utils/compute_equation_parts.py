@@ -36,7 +36,7 @@ def execute(n_voxel, D0, neighbor_id_2d, tau_open_voxel, tau_close_voxel, tau_in
     P_2d[:, 4] = 4 * delta_2d[:, 4] * D33
     P_2d[:, 5] = 4 * delta_2d[:, 5] * D33
 
-    neighbor_id_2d_2 = neighbor_id_2d
+    neighbor_id_2d_2 = neighbor_id_2d.copy() # NOTE: without .copy(), changes of neighbor_id_2d_2 will also change neighbor_id_2d
     neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index. 
         # and this does not matter because the corresponding delta_2d will be 0, 
         # so these terms will be eliminated anyway

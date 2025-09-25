@@ -20,7 +20,7 @@ def execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pa
     sim_u_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
     sim_h_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
 
-    neighbor_id_2d_2 = neighbor_id_2d # neighbor indices
+    neighbor_id_2d_2 = neighbor_id_2d.copy() # NOTE: without .copy(), changes of neighbor_id_2d_2 will also change neighbor_id_2d
     neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index
         # this does not matter because the corresponding P_2d will be 0, 
         # so these terms will be eliminated anyway
@@ -153,7 +153,7 @@ def execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, 
     sim_u_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
     sim_h_voxel = np.zeros((n_voxel, t_final)) # sampling frequency at 1 kHz
 
-    neighbor_id_2d_2 = neighbor_id_2d # neighbor indices
+    neighbor_id_2d_2 = neighbor_id_2d.copy() # NOTE: without .copy(), changes of neighbor_id_2d_2 will also change neighbor_id_2d
     neighbor_id_2d_2[neighbor_id_2d_2 == -1] = 0 # change -1 to 0, so that it can be used as index
         # this does not matter because the corresponding P_2d will be 0, 
         # so these terms will be eliminated anyway

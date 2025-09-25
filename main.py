@@ -106,9 +106,9 @@ if do_flag == 1:
     for id in range(action_potential.shape[0]):
         action_potential_phase[id,:], activation_phase[id,:] = utils.create_phase.execute(action_potential[id,:], v_gate)
     np.save('result/action_potential_phase.npy', action_potential_phase)
-#%%
+
     # compute unipolar electrogram
-    id = [1, 30, 15, 800]
+    id = np.arange(0,10000,2000)
     electrode_xyz = voxel[id, :]
     c_voxel = c * np.ones(n_voxel)
     electrogram_unipolar = utils.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, c_voxel, action_potential, Delta, neighbor_id_2d)
@@ -126,14 +126,19 @@ if debug_plot == 1:
     plt.plot(action_potential[voxel_id, :],'b')
     plt.show()
 
+    plt.figure()
+    plt.plot(action_potential[1:10000:1000, :].T)
+    plt.show()
+
     # unipolar electrogram
     plt.figure()
-    e_id = 0
-    plt.plot(electrogram_unipolar[e_id], 'b')
+    # e_id = 0
+    # plt.plot(electrogram_unipolar[e_id,:], 'b')
+    plt.plot(electrogram_unipolar.T)
     plt.xlabel('Time (ms)')
     plt.ylabel('Voltage (scaled)')
     plt.title('Unipolar electrogram')
-    plt.show()  
+    plt.show()
 
 # %% 
 # display result
