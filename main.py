@@ -108,16 +108,21 @@ if do_flag == 1:
     np.save('result/action_potential_phase.npy', action_potential_phase)
 
     # compute unipolar electrogram
-    id = np.arange(0,15000,5000)
+    id = np.arange(0,15000,500)
     electrode_xyz = voxel[id, :]
     c_voxel = c * np.ones(n_voxel)
-    electrogram_unipolar = utils.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, c_voxel, action_potential, Delta, neighbor_id_2d)
+    method = 2 # 1: vectorized, 2: CPU parallel
+    
+    if method == 1:
+        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, c_voxel, action_potential, Delta, neighbor_id_2d)
+    elif method == 2:
+        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_CPU_parallel(electrode_xyz, voxel, D0, c_voxel, action_potential, Delta, neighbor_id_2d)
     np.save('result/electrogram_unipolar.npy', electrogram_unipolar)
 elif do_flag == 0:
     action_potential = np.load('result/action_potential.npy')
     action_potential_phase = np.load('result/action_potential_phase.npy')
     electrogram_unipolar = np.load('result/electrogram_unipolar.npy')
-
+#%%
 debug_plot = 0
 if debug_plot == 1:
     # action potential of some voxel
