@@ -1,7 +1,7 @@
 # %%
 # load libraries
 # --------------------------------------------------
-import utils
+import codes
 import os
 import scipy.io
 import numpy as np
@@ -31,7 +31,7 @@ if debug_plot == 1:
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.set_box_aspect([1,1,1])
-    utils.set_axes_equal.execute(ax)
+    codes.set_axes_equal.execute(ax)
     plt.show()
 
 # %% 
@@ -85,10 +85,10 @@ if do_flag == 1:
             D0[n] = np.eye(3)
 
     # compute heart model equation parts
-    P_2d = utils.compute_equation_parts.execute(n_voxel, D0, neighbor_id_2d, parameter, model_flag)
+    P_2d = codes.compute_equation_parts.execute(n_voxel, D0, neighbor_id_2d, parameter, model_flag)
 
     # create the pacing signal
-    pacing_signal = utils.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length, model_flag)
+    pacing_signal = codes.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length, model_flag)
 
     debug_plot = 0
     if debug_plot == 1: # plot pacing signal
@@ -102,16 +102,16 @@ if do_flag == 1:
     # compute simulation
     method = 2 # 1: vectorized, 2: CPU parallel
     if method == 1:
-        action_potential, h = utils.compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
+        action_potential, h = codes.compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
     elif method == 2:
-        action_potential, h = utils.compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
+        action_potential, h = codes.compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
     np.save('result/action_potential.npy', action_potential)
 
     # create phase from action potential
     action_potential_phase = np.zeros_like(action_potential)
     activation_phase = np.zeros_like(action_potential)
     for id in range(action_potential.shape[0]):
-        action_potential_phase[id,:], activation_phase[id,:] = utils.create_phase.execute(action_potential[id,:], v_gate)
+        action_potential_phase[id,:], activation_phase[id,:] = codes.create_phase.execute(action_potential[id,:], v_gate)
     np.save('result/action_potential_phase.npy', action_potential_phase)
 
     # compute unipolar electrogram
@@ -119,9 +119,9 @@ if do_flag == 1:
     electrode_xyz = voxel[electrode_id, :]
     method = 2 # 1: vectorized, 2: CPU parallel
     if method == 1:
-        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
+        electrogram_unipolar = codes.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
     elif method == 2:
-        electrogram_unipolar = utils.compute_unipolar_electrogram.execute_CPU_parallel(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
+        electrogram_unipolar = codes.compute_unipolar_electrogram.execute_CPU_parallel(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
     np.save('result/electrogram_unipolar.npy', electrogram_unipolar)
 elif do_flag == 0:
     action_potential = np.load('result/action_potential.npy')
@@ -182,7 +182,7 @@ if do_flag == 1:
         if (n % (num_time_steps//5)) == 0:
             print(f'compute color map {n/num_time_steps*100:.1f}%')
         data = action_potential_phase[:, n]
-        color = utils.convert_data_to_color.execute(data, data_min, data_max, data_threshold)
+        color = codes.convert_data_to_color.execute(data, data_min, data_max, data_threshold)
         map_color[n] = color
 
     # create figure
@@ -196,7 +196,7 @@ if do_flag == 1:
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
     ax.set_zlim([z_min, z_max])
-    utils.set_axes_equal.execute(ax)
+    codes.set_axes_equal.execute(ax)
 
     pause_interval = 0.000001
     view_angles = {} # dictionary to store view angles for each frame

@@ -1,7 +1,7 @@
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
-import utils
+import codes
 # %%
 
 dt = 0.05 # Aliev–Panfilov
@@ -11,7 +11,7 @@ t_final = 550 # ms. NOTE: need to be at least long enough to have two pacings, o
 
 # create the pacing signal
 model_flag = 2
-pacing_signal = utils.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length, model_flag)
+pacing_signal = codes.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length, model_flag)
 
 debug_plot = 0
 if debug_plot == 1: # plot pacing signal
