@@ -108,8 +108,8 @@ if do_flag == 1:
     np.save('result/action_potential_phase.npy', action_potential_phase)
 
     # compute unipolar electrogram
-    id = np.arange(0,15000,500)
-    electrode_xyz = voxel[id, :]
+    electrode_id = np.arange(0,15000,5000)
+    electrode_xyz = voxel[electrode_id, :]
     c_voxel = c * np.ones(n_voxel)
     method = 2 # 1: vectorized, 2: CPU parallel
     
@@ -123,17 +123,19 @@ elif do_flag == 0:
     action_potential_phase = np.load('result/action_potential_phase.npy')
     electrogram_unipolar = np.load('result/electrogram_unipolar.npy')
 #%%
-debug_plot = 0
+debug_plot = 1
 if debug_plot == 1:
     # action potential of some voxel
     voxel_id = 1000
     plt.figure()
     plt.plot(action_potential[voxel_id, :],'b')
-    plt.show()
 
     plt.figure()
-    plt.plot(action_potential[1:10000:1000, :].T)
-    plt.show()
+    plt.plot(action_potential[electrode_id, :].T)
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Voltage (scaled)')
+    plt.title('examples of simulated action potential')
+    plt.savefig('result/action_potential.png')
 
     # unipolar electrogram
     plt.figure()
@@ -142,8 +144,8 @@ if debug_plot == 1:
     plt.plot(electrogram_unipolar.T)
     plt.xlabel('Time (ms)')
     plt.ylabel('Voltage (scaled)')
-    plt.title('Unipolar electrogram')
-    plt.show()
+    plt.title('examples of simulated unipolar electrogram')
+    plt.savefig('result/unipolar_electrogram.png')
 
 # %% 
 # display result
@@ -164,7 +166,7 @@ x_max = np.max(xyz[:,0]) + d_buffer
 y_max = np.max(xyz[:,1]) + d_buffer
 z_max = np.max(xyz[:,2]) + d_buffer
 
-do_flag = 1
+do_flag = 0
 if do_flag == 1:
     print("display movie")
 
