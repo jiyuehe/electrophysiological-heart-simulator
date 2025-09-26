@@ -6,4 +6,5 @@ from .simulation import fibers
 from .processing import create_phase
 from .processing import prepare_geometry
 from .tools import convert_data_to_color
+from .tools import display_activation_movie
 from .simulation import compute_unipolar_electrogram
