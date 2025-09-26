@@ -2,6 +2,41 @@ import plotly.graph_objects as go # pip install plotly, pip install --upgrade nb
 import plotly.io as pio
 pio.renderers.default = "browser" # simulation result mesh display in internet browser
 
+def execute_on_volume(voxel, map_color):
+    # display movie (will open in internet browser)
+    fig = go.Figure(
+        data = [
+            go.Scatter3d(
+                x = voxel[:, 0], y = voxel[:, 1], z = voxel[:, 2],
+                mode = 'markers',
+                marker = dict(color = map_color[0], size = 3))
+        ],
+
+        layout = go.Layout(
+            updatemenus = [{
+                "type": "buttons",
+                "buttons": [
+                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 5}, "fromcurrent": True, "mode": "immediate"}]},
+                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0}, "mode": "immediate", "transition": {"duration": 0}}]}
+                ]
+            }],
+
+            sliders = [{
+                'active': 0,
+                'currentvalue': {"prefix": "Time: "},
+                'pad': {"t": 50},
+                'steps': [{'label': str(t), 'method': 'animate', 'args': [[str(t)], {'frame': {'duration': 0}, 'mode': 'immediate'}]}
+                for t in range(len(map_color))]
+            }]
+        ),
+
+        frames = [
+            go.Frame(data = [go.Scatter3d(marker = dict(color = map_color[t], size = 3))], name = str(t))
+            for t in range(len(map_color))
+        ]
+    )
+    fig.show()
+
 def execute_on_mesh(vertex, face, map_color):
     # display movie (will open in internet browser)
     fig = go.Figure(
