@@ -125,10 +125,10 @@ if debug_plot == 1:
     plt.show()
 
 # %%
-# display simulation phase movie
-do_flag = 0
+# activation activation movie display using plotly
+do_flag = 1
 if do_flag == 1:
-    # activation movie display on mesh
+    # activation activation movie display on mesh using plotly
     movie_data = action_potential_phase[voxel_for_each_vertex,:]
     data_min = np.min(movie_data)
     data_max = np.max(movie_data)
@@ -143,9 +143,9 @@ if do_flag == 1:
         map_color[n] = color
     codes.display_activation_movie.execute_on_mesh(vertex, face, map_color)
 
+    # activation movie display on volume using plotly
     do_flag = 0
     if do_flag == 1:
-        # activation movie display on volume using plotly
         movie_data = action_potential_phase[:,0:50] # if too large of data, will not display
         data_min = np.min(movie_data)
         data_max = np.max(movie_data)
@@ -160,8 +160,9 @@ if do_flag == 1:
             map_color[n] = color
         codes.display_activation_movie.execute_on_volume(voxel, map_color)
 
-do_flag = 1
-if do_flag == 1:
+# activation phase movie display on volume using matplotlib, can save as mp4
+do_flag = 0
+if do_flag == 1: 
     movie_data = action_potential_phase
     data_min = np.min(movie_data)
     data_max = np.max(movie_data)
@@ -175,7 +176,6 @@ if do_flag == 1:
         color = codes.convert_data_to_color.execute(data, data_min, data_max, data_threshold)
         map_color[n] = color
 
-    # activation movie display on volume using matplotlib
     d_buffer = 5 
     x_min = np.min(voxel[:,0]) - d_buffer
     y_min = np.min(voxel[:,1]) - d_buffer
