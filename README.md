@@ -3,10 +3,10 @@ Written in Python.
 It can reproduce patient-specific focal and rotor arrhythmias.  
 
 An example of arrhythmia simulation:  
-![Demo](demo/demo.gif)  
+![Demo](result/demo/activation_movie.gif)  
 
 Examples of simulated action potential:  
-![Demo](demo/demo_action_potential.png)  
+![Demo](result/demo/action_potential.png)  
 
 Examples of simulated electrogram:  
-![Demo](demo/demo_unipolar_electrogram.png)  
+![Demo](result/demo/unipolar_electrogram.png)  
