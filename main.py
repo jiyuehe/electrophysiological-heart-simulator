@@ -227,7 +227,7 @@ if do_flag == 1:
             updatemenus=[{
                 "type": "buttons",
                 "buttons": [
-                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 100}, "fromcurrent": True, "mode": "immediate"}]},
+                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 10}, "fromcurrent": True, "mode": "immediate"}]},
                     {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0}, "mode": "immediate", "transition": {"duration": 0}}]}
                 ]
             }],
