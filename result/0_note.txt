@@ -1,0 +1,2 @@
+This file is just to make the GitHub page display the folder structure better: 
+Instead of displaying "result/0_demo", display "result".
