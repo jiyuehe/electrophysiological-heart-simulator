@@ -3,75 +3,29 @@
 # --------------------------------------------------
 import codes
 import os
-import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go # pip install plotly, pip install --upgrade nbformat. For 3D interactive plot: triangular mesh, and activation movie
 import plotly.io as pio
 pio.renderers.default = "browser" # simulation result mesh display in internet browser
 
-# %% 
-# load the .mat data file
-# --------------------------------------------------
 script_dir = os.path.dirname(os.path.abspath(__file__)) # get the path of the current script
 os.chdir(script_dir) # change the working directory
 
-data_path = "data/"
-mat_data = scipy.io.loadmat(data_path + "heart_example.mat")
-
-voxel = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel'][0,0] # xyz coordinates of each voxel
-neighbor_id_2d = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel_based_voxels'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
-Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0][0,0] # voxel spacing
-voxel_for_each_vertex = mat_data['data']['geometry'][0,0]['edited'][0,0]['voxel_for_each_vertex'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
-voxel_for_each_vertex = voxel_for_each_vertex.flatten() # convert to 1D array
-vertex = mat_data['data']['geometry'][0,0]['edited'][0,0]['vertex'][0,0] # xyz coordinates of each vertex
-face = mat_data['data']['geometry'][0,0]['edited'][0,0]['face'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
-
-debug_plot = 0
-if debug_plot == 1:
-    # plot the voxels
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(voxel[:, 0], voxel[:, 1], voxel[:, 2], color='blue', s=1, marker='.')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_box_aspect([1,1,1])
-    codes.set_axes_equal.execute(ax)
-
-    # plot the voxels near the triangular mesh
-    voxel_2 = voxel[voxel_for_each_vertex,:]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(voxel_2[:, 0], voxel_2[:, 1], voxel_2[:, 2], color='blue', s=1, marker='.')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_box_aspect([1,1,1])
-    codes.set_axes_equal.execute(ax)
-
-    plt.show()
-
-    # plot the triangular mesh
-    fig = go.Figure(data=[
-        go.Mesh3d(
-            x=vertex[:, 0], y=vertex[:, 1], z=vertex[:, 2],
-            i=face[:, 0], j=face[:, 1], k=face[:, 2],
-            color='white'
-        )
-    ])
-    fig.show()
+# %% 
+# load the .mat data file
+# --------------------------------------------------
+data_path = script_dir + "/data/"
+voxel, neighbor_id_2d, Delta, voxel_for_each_vertex, vertex, face = codes.processing.prepare_geometry.execute(data_path)
 
 # %% 
-# settings
-# --------------------------------------------------
 # simulation parameters
-dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
+# --------------------------------------------------
+dt = 0.05 # ms. if dt is not small enough, simulation will result nan. Generally, if c <= 1.0, can use dt = 0.05
+t_final = 300 # ms. NOTE: need to be at least long enough to have two pacings, or cannot compute phase from action potential
+pacing_voxel_id = 100
 pacing_start_time = 1 # ms
 pacing_cycle_length = 250 # ms
-t_final = 300 # ms. NOTE: need to be at least long enough to have two pacings, or cannot show phase movie after simulation
-
-pacing_voxel_id = 100
 
 # parameters of the heart model
 n_voxel = voxel.shape[0] 
@@ -97,20 +51,10 @@ elif model_flag == 2: # Aliev–Panfilov
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 0 # 1: compute simulation, 0: load existing result
+do_flag = 0 # 1: compute, 0: load existing result
 if do_flag == 1:
     # fiber orientations
-    fiber_flag = 0 # 0: no fiber, 1: fiber
-    r = [] # no fiber
-    fiber_orientation = [] # no fiber
-    D0 = [None] * n_voxel  # Create list of None values (equivalent to cell array)
-    for n in range(n_voxel):  # 0-based indexing in Python
-        if fiber_flag == 1:
-            e1 = fiber_orientation[n, :].reshape(-1, 1)  # Make column vector
-            D0[n] = r * np.eye(3) + (1-r) * (e1 @ e1.T)  # @ is matrix multiplication
-        elif fiber_flag == 0:
-            # here r = 1
-            D0[n] = np.eye(3)
+    D0 = codes.simulation.fibers.execute(n_voxel)
 
     # compute heart model equation parts
     P_2d = codes.compute_equation_parts.execute(n_voxel, D0, neighbor_id_2d, parameter, model_flag)
@@ -118,46 +62,19 @@ if do_flag == 1:
     # create the pacing signal
     pacing_signal = codes.create_pacing_signal.execute(dt, t_final, pacing_start_time, pacing_cycle_length, model_flag)
 
-    debug_plot = 0
-    if debug_plot == 1: # plot pacing signal
-        t = np.arange(dt, t_final + dt, dt)
-        plt.figure()
-        plt.plot(t,pacing_signal, 'b')
-        plt.xlabel('Time (ms)')
-        plt.title('Pacing signal')
-        plt.show()
-
     # compute simulation
-    method = 2 # 1: vectorized, 2: CPU parallel
-    if method == 1:
-        action_potential, h = codes.compute_simulation.execute_vectorized(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
-    elif method == 2:
-        action_potential, h = codes.compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
+    action_potential, h = codes.compute_simulation.execute_CPU_parallel(neighbor_id_2d, pacing_voxel_id, n_voxel, dt, t_final, pacing_signal, P_2d, Delta, model_flag)
     np.save('result/action_potential.npy', action_potential)
 
-    # create phase from action potential
-    action_potential_phase = np.zeros_like(action_potential)
-    activation_phase = np.zeros_like(action_potential)
-    for id in range(action_potential.shape[0]):
-        action_potential_phase[id,:], activation_phase[id,:] = codes.create_phase.execute(action_potential[id,:], v_gate)
-    np.save('result/action_potential_phase.npy', action_potential_phase)
-
     # compute unipolar electrogram
-    electrode_id = np.arange(0,15000,5000)
+    electrode_id = [0, 5000, 10000]
     electrode_xyz = voxel[electrode_id, :]
-    method = 2 # 1: vectorized, 2: CPU parallel
-    if method == 1:
-        electrogram_unipolar = codes.compute_unipolar_electrogram.execute_vectorized(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
-    elif method == 2:
-        electrogram_unipolar = codes.compute_unipolar_electrogram.execute_CPU_parallel(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
+    electrogram_unipolar = codes.compute_unipolar_electrogram.execute_CPU_parallel(electrode_xyz, voxel, D0, parameter['c_voxel'], action_potential, Delta, neighbor_id_2d)
     np.save('result/electrogram_unipolar.npy', electrogram_unipolar)
 elif do_flag == 0:
     action_potential = np.load('result/action_potential.npy')
-    action_potential_phase = np.load('result/action_potential_phase.npy')
     electrogram_unipolar = np.load('result/electrogram_unipolar.npy')
-#%%
-# display result
-# --------------------------------------------------
+
 debug_plot = 0
 if debug_plot == 1:
     # action potential
@@ -180,12 +97,35 @@ if debug_plot == 1:
 
     plt.show()
 
-# %% 
+#%%
+# display result
+# --------------------------------------------------
+# create phase from action potential
+do_flag = 1 # 1: compute, 0: load existing result
+if do_flag == 1:
+    
+    action_potential_phase = np.zeros_like(action_potential)
+    activation_phase = np.zeros_like(action_potential)
+    for id in range(action_potential.shape[0]):
+        action_potential_phase[id,:], activation_phase[id,:] = codes.create_phase.execute(action_potential[id,:], v_gate)
+    np.save('result/action_potential_phase.npy', action_potential_phase)
+elif do_flag == 0:
+    action_potential_phase = np.load('result/action_potential_phase.npy')
+
+debug_plot = 0
+if debug_plot == 1:
+    voxel_id = 2000
+    ap = action_potential[voxel_id,:]
+    ap_phase = action_potential_phase[voxel_id,:]
+    plt.figure()
+    plt.plot(ap, 'b')
+    plt.plot(ap_phase, 'g')
+    plt.show()
+
 # display simulation phase movie
 movie_data = action_potential_phase[voxel_for_each_vertex,:]
 xyz = voxel[voxel_for_each_vertex,:]
 
-t = np.arange(1, t_final + 1, 1)
 _, n_time_step = movie_data.shape
 v_min = np.min(movie_data)
 v_max = np.max(movie_data)
@@ -219,7 +159,7 @@ if do_flag == 1:
             updatemenus=[{
                 "type": "buttons",
                 "buttons": [
-                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 10}, "fromcurrent": True, "mode": "immediate"}]},
+                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 5}, "fromcurrent": True, "mode": "immediate"}]},
                     {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0}, "mode": "immediate", "transition": {"duration": 0}}]}
                 ]
             }],
