@@ -190,14 +190,6 @@ _, n_time_step = movie_data.shape
 v_min = np.min(movie_data)
 v_max = np.max(movie_data)
 
-d_buffer = 5 
-x_min = np.min(xyz[:,0]) - d_buffer
-y_min = np.min(xyz[:,1]) - d_buffer
-z_min = np.min(xyz[:,2]) - d_buffer
-x_max = np.max(xyz[:,0]) + d_buffer
-y_max = np.max(xyz[:,1]) + d_buffer
-z_max = np.max(xyz[:,2]) + d_buffer
-
 do_flag = 1
 if do_flag == 1:
     print("display movie")
