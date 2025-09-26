@@ -6,8 +6,9 @@ import os
 import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib.animation import FFMpegWriter
+import plotly.graph_objects as go # pip install plotly, pip install --upgrade nbformat. For 3D interactive plot: triangular mesh, and activation movie
+import plotly.io as pio
+pio.renderers.default = "browser" # simulation result mesh display in internet browser
 
 # %% 
 # load the .mat data file
@@ -18,12 +19,17 @@ os.chdir(script_dir) # change the working directory
 data_path = "data/"
 mat_data = scipy.io.loadmat(data_path + "heart_example.mat")
 
-voxel = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel'][0,0]
+voxel = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel'][0,0] # xyz coordinates of each voxel
 neighbor_id_2d = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['voxel_based_voxels'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
-Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0][0,0]
+Delta = mat_data['data']['geometry'][0,0]['edited'][0,0]['volume'][0,0]['delta'][0,0][0,0] # voxel spacing
+voxel_for_each_vertex = mat_data['data']['geometry'][0,0]['edited'][0,0]['voxel_for_each_vertex'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
+voxel_for_each_vertex = voxel_for_each_vertex.flatten() # convert to 1D array
+vertex = mat_data['data']['geometry'][0,0]['edited'][0,0]['vertex'][0,0] # xyz coordinates of each vertex
+face = mat_data['data']['geometry'][0,0]['edited'][0,0]['face'][0,0].astype(np.int32) -1 # -1 is to convert Matlab 1-based index to Python 0-based index
 
 debug_plot = 0
 if debug_plot == 1:
+    # plot the voxels
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(voxel[:, 0], voxel[:, 1], voxel[:, 2], color='blue', s=1, marker='.')
@@ -32,7 +38,29 @@ if debug_plot == 1:
     ax.set_zlabel('Z')
     ax.set_box_aspect([1,1,1])
     codes.set_axes_equal.execute(ax)
+
+    # plot the voxels near the triangular mesh
+    voxel_2 = voxel[voxel_for_each_vertex,:]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(voxel_2[:, 0], voxel_2[:, 1], voxel_2[:, 2], color='blue', s=1, marker='.')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_box_aspect([1,1,1])
+    codes.set_axes_equal.execute(ax)
+
     plt.show()
+
+    # plot the triangular mesh
+    fig = go.Figure(data=[
+        go.Mesh3d(
+            x=vertex[:, 0], y=vertex[:, 1], z=vertex[:, 2],
+            i=face[:, 0], j=face[:, 1], k=face[:, 2],
+            color='white'
+        )
+    ])
+    fig.show()
 
 # %% 
 # settings
@@ -41,7 +69,7 @@ if debug_plot == 1:
 dt = 0.05 # ms. if dt is not small enough, simulation will give NaN. Generally, if c <= 1.0, can use dt = 0.05
 pacing_start_time = 1 # ms
 pacing_cycle_length = 250 # ms
-t_final = 550 # ms. NOTE: need to be at least long enough to have two pacings, or cannot show phase movie after simulation
+t_final = 300 # ms. NOTE: need to be at least long enough to have two pacings, or cannot show phase movie after simulation
 
 pacing_voxel_id = 100
 
@@ -69,7 +97,7 @@ elif model_flag == 2: # Aliev–Panfilov
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 1 # 1: compute simulation, 0: load existing result
+do_flag = 0 # 1: compute simulation, 0: load existing result
 if do_flag == 1:
     # fiber orientations
     fiber_flag = 0 # 0: no fiber, 1: fiber
@@ -128,7 +156,9 @@ elif do_flag == 0:
     action_potential_phase = np.load('result/action_potential_phase.npy')
     electrogram_unipolar = np.load('result/electrogram_unipolar.npy')
 #%%
-debug_plot = 1
+# display result
+# --------------------------------------------------
+debug_plot = 0
 if debug_plot == 1:
     # action potential
     plt.figure()
@@ -151,13 +181,12 @@ if debug_plot == 1:
     plt.show()
 
 # %% 
-# display result
-# --------------------------------------------------
 # display simulation phase movie
-movie_data = action_potential_phase
-xyz = voxel
+movie_data = action_potential_phase[voxel_for_each_vertex,:]
+xyz = voxel[voxel_for_each_vertex,:]
+
 t = np.arange(1, t_final + 1, 1)
-num_particles, num_time_steps = movie_data.shape
+_, n_time_step = movie_data.shape
 v_min = np.min(movie_data)
 v_max = np.max(movie_data)
 
@@ -178,61 +207,36 @@ if do_flag == 1:
     data_max = v_max
     data_threshold = v_min
     map_color = {}
-    for n in range(num_time_steps):
-        if (n % (num_time_steps//5)) == 0:
-            print(f'compute color map {n/num_time_steps*100:.1f}%')
-        data = action_potential_phase[:, n]
+    for n in range(n_time_step):
+        if (n % (n_time_step//5)) == 0:
+            print(f'compute color map {n/n_time_step*100:.1f}%')
+        data = movie_data[:, n]
         color = codes.convert_data_to_color.execute(data, data_min, data_max, data_threshold)
         map_color[n] = color
 
-    # create figure
-    fig = plt.figure(figsize=(10, 8))
-    ax = plt.axes(projection='3d')
-    ax.view_init(elev = -50, azim = 100)
-    plot_handle = ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c=map_color[0], s=2, alpha=1)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_xlim([x_min, x_max])
-    ax.set_ylim([y_min, y_max])
-    ax.set_zlim([z_min, z_max])
-    codes.set_axes_equal.execute(ax)
+    # display movie
+    fig = go.Figure(
+        data=[go.Mesh3d(
+            x=vertex[:, 0], y=vertex[:, 1], z=vertex[:, 2],
+            i=face[:, 0], j=face[:, 1], k=face[:, 2],
+            vertexcolor=map_color[0]   # start with first frame
+        )],
+        layout=go.Layout(
+            updatemenus=[{
+                "type": "buttons",
+                "buttons": [
+                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 10}}]},
+                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0}, "mode": "immediate"}]}
+                ]
+            }]
+        ),
+        frames=[
+            go.Frame(data=[go.Mesh3d(vertexcolor=map_color[t])], name=str(t))
+            for t in range(len(map_color))
+        ]
+    )
+    fig.show()
 
-    pause_interval = 0.000001
-    view_angles = {} # dictionary to store view angles for each frame
-    for n in range(num_time_steps):
-        if (n % (num_time_steps//10)) == 0:
-            print(f'playing movie {n/num_time_steps*100:.1f}%')
 
-        plot_handle.set_facecolor(map_color[n]) # set color based on phase to each voxel
-        ax.set_title(f'Time: {t[n]}/{t[-1]} ms') # set title with current time step
 
-        # capture current view angles
-        elev = ax.elev  # elevation angle
-        azim = ax.azim  # azimuth angle
-        view_angles[n] = {'elev': elev, 'azim': azim}
 
-        plt.pause(pause_interval)
-
-    # save simulation movie as mp4
-    do_flag = 0
-    if do_flag == 1:
-        print("saving movie as mp4")
-
-        def animate(n):
-            if (n % (num_time_steps//10)) == 0:
-                print(f'saving movie {n/num_time_steps*100:.1f}%')
-
-            plot_handle.set_facecolor(map_color[n]) # set color based on phase to each voxel
-            ax.set_title(f'Time: {t[n]}/{t[-1]} ms') # set title with current time step
-
-            ax.view_init(elev=view_angles[n]['elev'], azim=view_angles[n]['azim']) # restore view angle
-
-        anim = animation.FuncAnimation(fig, animate, frames=num_time_steps, interval=10, blit=False, repeat=False)
-        # the interval parameter specifies the delay between frames in milliseconds
-
-        # save
-        writer = FFMpegWriter(fps=10, bitrate=1800)
-        anim.save('result/simulation movie.mp4', writer=writer)
-
-        print("movie saved as mp4")
