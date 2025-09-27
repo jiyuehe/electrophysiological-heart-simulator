@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks # pip install scipy
 
 def execute(ap, v_gate):
     # action poential phase. phase within the action potential shape

@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.animation import FFMpegWriter
-import plotly.graph_objects as go # pip install plotly, pip install --upgrade nbformat. For 3D interactive plot: triangular mesh, and activation movie
+import plotly.graph_objects as go # pip install plotly. For 3D interactive plot: triangular mesh, and activation movie
 import plotly.io as pio
 pio.renderers.default = "browser" # simulation result mesh display in internet browser
 
@@ -53,7 +53,7 @@ elif model_flag == 2: # Aliev–Panfilov
 # %% 
 # compute simulation
 # --------------------------------------------------
-do_flag = 0 # 1: compute, 0: load existing result
+do_flag = 1 # 1: compute, 0: load existing result
 if do_flag == 1:
     # fiber orientations
     D0 = codes.simulation.fibers.execute(n_voxel)
